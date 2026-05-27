@@ -469,42 +469,6 @@ LAYER-III ACCESS: GRANTED</pre>
 
 
   <!-- ════════════════════════════════
-    STATE ANALYSIS モーダル
-  ════════════════════════════════ -->
-  <div id="state-modal" class="state-modal-overlay">
-    <div class="state-modal-panel">
-
-      <div class="state-modal-header">
-        <span class="mono">INST.#0047 // STATE ANALYSIS MODULE</span>
-        <button class="dossier-close mono" onclick="abortStateAnalysis()">[ ABORT ]</button>
-      </div>
-
-      <!-- 進捗 -->
-      <div class="state-modal-progress">
-        <div class="state-modal-prog-bar">
-          <div class="state-modal-prog-fill" id="state-prog-fill"></div>
-        </div>
-        <span class="state-modal-prog-label mono" id="state-prog-label">1 / 10</span>
-      </div>
-
-      <!-- 質問エリア -->
-      <div class="state-modal-body" id="state-modal-body">
-        <p class="state-q-preface mono" id="state-q-preface">STATE PROBE 01</p>
-        <p class="state-q-text" id="state-q-text">質問テキスト</p>
-        <div class="state-options" id="state-options">
-          <!-- JS で動的生成 -->
-        </div>
-      </div>
-
-      <!-- ターミナルライン -->
-      <div class="state-modal-footer mono" id="state-modal-footer">
-        ANALYZING CURRENT CONDITION...
-      </div>
-
-    </div>
-  </div>
-
-  <!-- ════════════════════════════════
     タイプ図鑑モーダル
   ════════════════════════════════ -->
   <div id="dossier-modal" class="dossier-overlay" onclick="closeDossier(event)">
@@ -533,6 +497,32 @@ LAYER-III ACCESS: GRANTED</pre>
   </footer>
 
 </div><!-- /.page-wrapper -->
+
+<!-- ════════════════════════════════
+  STATE ANALYSIS モーダル（page-wrapper外・body直下）
+════════════════════════════════ -->
+<div id="state-modal" class="state-modal-overlay">
+  <div class="state-modal-panel">
+    <div class="state-modal-header">
+      <span class="mono">INST.#0047 // STATE ANALYSIS MODULE</span>
+      <button class="dossier-close mono" onclick="abortStateAnalysis()">[ ABORT ]</button>
+    </div>
+    <div class="state-modal-progress">
+      <div class="state-modal-prog-bar">
+        <div class="state-modal-prog-fill" id="state-prog-fill"></div>
+      </div>
+      <span class="state-modal-prog-label mono" id="state-prog-label">1 / 10</span>
+    </div>
+    <div class="state-modal-body" id="state-modal-body">
+      <p class="state-q-preface mono" id="state-q-preface">STATE PROBE 01</p>
+      <p class="state-q-text" id="state-q-text">質問テキスト</p>
+      <div class="state-options" id="state-options"></div>
+    </div>
+    <div class="state-modal-footer mono" id="state-modal-footer">
+      ANALYZING CURRENT CONDITION...
+    </div>
+  </div>
+</div>
 
 <script src="types.js"></script>
 <script src="state.js"></script>
