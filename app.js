@@ -1187,10 +1187,10 @@ function drawAxisMap() {
 
   // ── 象限ラベル（コーナー） ──
   const quadLabels = [
-    { lx: -0.78, ly:  0.78, text: ["REALITY×", "REVOLUTION"], color: "rgba(255,100,80,0.35)" },
-    { lx:  0.78, ly:  0.78, text: ["ABSTRACTION×", "REVOLUTION"], color: "rgba(180,100,255,0.35)" },
-    { lx: -0.78, ly: -0.78, text: ["REALITY×", "ORDER"], color: "rgba(0,200,255,0.3)" },
-    { lx:  0.78, ly: -0.78, text: ["ABSTRACTION×", "ORDER"], color: "rgba(255,180,0,0.3)" }
+    { lx: -0.78, ly:  0.78, text: ["REALITY×", "REVOLUTION"], color: "rgba(255,120,100,0.7)" },
+    { lx:  0.78, ly:  0.78, text: ["ABSTRACTION×", "REVOLUTION"], color: "rgba(200,130,255,0.7)" },
+    { lx: -0.78, ly: -0.78, text: ["REALITY×", "ORDER"], color: "rgba(0,200,255,0.65)" },
+    { lx:  0.78, ly: -0.78, text: ["ABSTRACTION×", "ORDER"], color: "rgba(255,190,60,0.65)" }
   ];
   ctx.font = `${Math.round(W * 0.021)}px monospace`;
   for (const ql of quadLabels) {
@@ -1225,7 +1225,7 @@ function drawAxisMap() {
     ctx.fill();
 
     // タイプコード（小）
-    ctx.fillStyle = t.color.replace("0.8", "0.5");
+    ctx.fillStyle = t.color.replace("0.8", "0.75");
     ctx.font      = `${Math.round(W * 0.02)}px monospace`;
     ctx.textAlign = coord.x > 0 ? "left" : "right";
     const offset  = W * 0.033;
@@ -1461,11 +1461,12 @@ function drawCivMap() {
     ctx.setLineDash([]);
 
     // ゾーン名ラベル
-    ctx.fillStyle  = zone.textColor.replace("0.7", isNearest ? "0.9" : "0.45");
-    ctx.font       = `${Math.round(W * 0.028)}px monospace`;
+    ctx.fillStyle  = zone.textColor.replace("0.7", isNearest ? "1.0" : "0.7");
+    ctx.font       = `bold ${Math.round(W * 0.028)}px monospace`;
     ctx.textAlign  = "center";
     ctx.fillText(zone.nameEn, p.cx, p.cy - pr * 0.65);
     ctx.font = `${Math.round(W * 0.022)}px 'Noto Sans JP',sans-serif`;
+    ctx.fillStyle = zone.textColor.replace("0.7", isNearest ? "0.85" : "0.6");
     ctx.fillText(zone.name, p.cx, p.cy - pr * 0.65 + Math.round(W * 0.032));
     ctx.textAlign = "left";
   }
