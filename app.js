@@ -199,6 +199,7 @@ function earlyExit() {
 }
 
 function retryDiagnosis() {
+  window._axisMapRunning = false; // マップアニメーション停止
   initScores();
   currentQuestionIndex = 0;
 
@@ -602,8 +603,15 @@ function renderResult(early = false) {
   // ─── 矛盾 ───
   renderAnomalies(anomalies);
 
+  // ─── タイプアイコン ───
+  renderTypeIcon(primary.id, "normal");
+
   // ─── チャート ───
   drawRadarChart(primary.color);
+
+  // ─── 二軸マップ + 文明マップ ───
+  window._axisMapRunning = false; // 前回のアニメを停止
+  setTimeout(drawAllMaps, 300);   // DOMが整った後に描画
 
   // ─── ランキング ───
   renderTopParams();
@@ -921,6 +929,39 @@ function renderTopParams() {
 
 
 // ════════════════════════════════════════════
+// タイプアイコン表示
+// ════════════════════════════════════════════
+
+/** 現在表示中のタイプID（アイコン切り替え用） */
+let currentIconTypeId = null;
+
+function renderTypeIcon(typeId, state) {
+  currentIconTypeId = typeId;
+  const wrap = document.getElementById("result-type-icon");
+  if (!wrap) return;
+  wrap.innerHTML = getTypeIcon(typeId, state);
+  // スキャンライン演出クラス付与
+  wrap.setAttribute("data-type", typeId);
+}
+
+/** NORMAL / RUNAWAY / MATURE 切り替えボタン */
+function switchIconState(state, btn) {
+  if (!currentIconTypeId) return;
+  renderTypeIcon(currentIconTypeId, state);
+  // ボタンのactiveクラスを切り替え
+  const btns = document.querySelectorAll(".icon-state-btn");
+  btns.forEach(b => b.classList.remove("active"));
+  if (btn) btn.classList.add("active");
+  // ラベル更新
+  const label = document.getElementById("icon-state-label");
+  if (label) {
+    const map = { normal: "SUBJECT VISUAL RECORD", runaway: "⚠ RUNAWAY STATE", mature: "▶ MATURE STATE" };
+    label.textContent = map[state] || "SUBJECT VISUAL RECORD";
+    label.className = "icon-state-label mono " + (state !== "normal" ? "state-label-" + state : "");
+  }
+}
+
+// ════════════════════════════════════════════
 // パラメータ詳細解説レンダリング
 // 上位5パラメータについて説明・高い場合・暴走時 を表示
 // ════════════════════════════════════════════
@@ -1004,6 +1045,725 @@ function renderTypeInsight(type) {
 // ════════════════════════════════════════════
 
 // ════════════════════════════════════════════
+// VECTOR AXIS MAP（二軸マップ）
+// X軸: 現実(REALITY) ←→ 抽象(ABSTRACTION)
+// Y軸: 秩序(ORDER)   ←→ 革命(REVOLUTION)
+//
+// 各パラメータの軸への寄与度（-1.0〜+1.0）
+//   X軸(reality←→abstraction): 負=現実寄り、正=抽象寄り
+//   Y軸(order←→revolution):    負=秩序寄り、正=革命寄り
+// ════════════════════════════════════════════
+
+/**
+ * 20パラメータ → X/Y座標へのマッピング係数
+ * 各パラメータが2軸にどれだけ影響するか。
+ * xWeight: 負=現実側、正=抽象側
+ * yWeight: 負=秩序側、正=革命側
+ */
+const PARAM_AXIS_WEIGHTS = {
+  // ── X軸(現実←→抽象) ──
+  reality:     { x: -0.9, y: -0.2 },  // 強く現実側
+  work:        { x: -0.7, y: -0.3 },  // 現実×秩序
+  endurance:   { x: -0.5, y: -0.4 },  // 現実×秩序
+  love:        { x: -0.3, y:  0.0 },  // やや現実側
+  management:  { x: -0.4, y: -0.6 },  // 現実×強秩序
+  leadership:  { x: -0.2, y:  0.2 },  // 中央近く
+  observer:    { x:  0.2, y: -0.3 },  // やや抽象×秩序
+  solitude:    { x:  0.3, y:  0.1 },  // やや抽象
+  expert:      { x:  0.1, y: -0.2 },  // 中央近く
+  otaku:       { x:  0.4, y:  0.0 },  // やや抽象
+  freedom:     { x:  0.2, y:  0.6 },  // やや抽象×革命
+  creativity:  { x:  0.5, y:  0.5 },  // 抽象×革命
+  unique:      { x:  0.6, y:  0.4 },  // 抽象×革命
+  architect:   { x:  0.7, y: -0.1 },  // 強抽象×やや秩序
+  research:    { x:  0.6, y:  0.0 },  // 抽象
+  genius:      { x:  0.8, y:  0.2 },  // 強抽象×やや革命
+  philosophy:  { x:  0.8, y:  0.3 },  // 強抽象
+  meta:        { x:  0.9, y:  0.1 },  // 最強抽象
+  revolution:  { x:  0.3, y:  0.9 },  // やや抽象×最強革命
+  mystic:      { x:  0.7, y:  0.5 }   // 抽象×革命
+};
+
+/**
+ * 12タイプの固定座標（事前計算済み＋手調整）
+ * x: -1(現実)〜+1(抽象), y: -1(秩序)〜+1(革命)
+ * Canvas上では: x→横、y→縦(上がプラス)
+ */
+const TYPE_AXIS_COORDS = {
+  abyss_architect:      { x:  0.78, y:  0.10 },
+  civilization_operator:{ x: -0.60, y: -0.55 },
+  solitary_observer:    { x:  0.50, y: -0.10 },
+  mad_researcher:       { x:  0.55, y:  0.25 },
+  revolutionary:        { x:  0.25, y:  0.82 },
+  mystic_seeker:        { x:  0.62, y:  0.55 },
+  altruist_operator:    { x: -0.35, y:  0.15 },
+  reality_adapter:      { x: -0.72, y: -0.40 },
+  lone_craftsman:       { x:  0.05, y: -0.35 },
+  creative_impulse:     { x:  0.45, y:  0.70 },
+  social_circulator:    { x: -0.45, y:  0.30 },
+  harmony_supporter:    { x: -0.50, y: -0.15 }
+};
+
+/**
+ * スコアから自分の軸座標を算出する
+ * @param {Object} scores - { paramId: number }
+ * @returns {{ x: number, y: number }} -1〜+1
+ */
+function calcAxisCoords(scores) {
+  const total = Object.values(scores).reduce((s, v) => s + v, 0) || 1;
+  let x = 0, y = 0;
+  for (const [param, val] of Object.entries(scores)) {
+    const w = PARAM_AXIS_WEIGHTS[param];
+    if (!w) continue;
+    const ratio = val / total;
+    x += w.x * ratio;
+    y += w.y * ratio;
+  }
+  // 正規化：振れ幅が小さいので2倍スケール（最大でも±1に収める）
+  x = Math.max(-1, Math.min(1, x * 4));
+  y = Math.max(-1, Math.min(1, y * 4));
+  return { x, y };
+}
+
+/**
+ * 二軸マップを描画する（Canvas API）
+ */
+function drawAxisMap() {
+  const canvas = document.getElementById("axis-map-canvas");
+  if (!canvas) return;
+
+  // レスポンシブなサイズ設定
+  const containerWidth = canvas.parentElement ? canvas.parentElement.offsetWidth : 460;
+  const size = Math.min(460, Math.max(280, containerWidth - 20));
+  canvas.width  = size;
+  canvas.height = size;
+
+  const ctx = canvas.getContext("2d");
+  const W   = size, H = size;
+  const cx  = W / 2, cy = H / 2;
+  const R   = W * 0.42; // プロット半径
+
+  /** 論理座標 → Canvas座標 */
+  function toCanvas(lx, ly) {
+    return { cx: cx + lx * R, cy: cy - ly * R };
+  }
+
+  // ── 背景 ──
+  ctx.fillStyle = "#070c16";
+  ctx.fillRect(0, 0, W, H);
+
+  // 走査線
+  ctx.fillStyle = "rgba(0,200,255,0.012)";
+  for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2);
+
+  // ── グリッド（薄い同心円） ──
+  for (const r of [0.25, 0.5, 0.75, 1.0]) {
+    ctx.beginPath();
+    ctx.arc(cx, cy, R * r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(0,200,255,${r === 1.0 ? 0.12 : 0.07})`;
+    ctx.lineWidth   = r === 1.0 ? 0.8 : 0.5;
+    ctx.stroke();
+  }
+
+  // ── 四象限の色（背景） ──
+  const quadColors = [
+    { x1: cx, y1: 0,  x2: W-cx, y2: cy, color: "rgba(180,100,255,0.025)" }, // 右上:抽象×革命
+    { x1: 0,  y1: 0,  x2: cx,   y2: cy, color: "rgba(255,100,80,0.02)"  }, // 左上:現実×革命
+    { x1: 0,  y1: cy, x2: cx,   y2: H-cy, color: "rgba(0,200,255,0.025)" }, // 左下:現実×秩序
+    { x1: cx, y1: cy, x2: W-cx, y2: H-cy, color: "rgba(255,180,0,0.02)"  }  // 右下:抽象×秩序
+  ];
+  for (const q of quadColors) {
+    ctx.fillStyle = q.color;
+    ctx.fillRect(q.x1, q.y1, q.x2, q.y2);
+  }
+
+  // ── 軸線 ──
+  ctx.strokeStyle = "rgba(0,200,255,0.22)";
+  ctx.lineWidth   = 0.8;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // ── 象限ラベル（コーナー） ──
+  const quadLabels = [
+    { lx: -0.78, ly:  0.78, text: ["REALITY×", "REVOLUTION"], color: "rgba(255,100,80,0.35)" },
+    { lx:  0.78, ly:  0.78, text: ["ABSTRACTION×", "REVOLUTION"], color: "rgba(180,100,255,0.35)" },
+    { lx: -0.78, ly: -0.78, text: ["REALITY×", "ORDER"], color: "rgba(0,200,255,0.3)" },
+    { lx:  0.78, ly: -0.78, text: ["ABSTRACTION×", "ORDER"], color: "rgba(255,180,0,0.3)" }
+  ];
+  ctx.font = `${Math.round(W * 0.021)}px monospace`;
+  for (const ql of quadLabels) {
+    const p = toCanvas(ql.lx, ql.ly);
+    ctx.fillStyle = ql.color;
+    ctx.textAlign = ql.lx < 0 ? "left" : "right";
+    ql.text.forEach((line, i) => {
+      ctx.fillText(line, p.cx, p.cy + i * Math.round(W * 0.026));
+    });
+  }
+  ctx.textAlign = "left";
+
+  // ── 全タイプをプロット ──
+  for (const t of DIAGNOSIS_TYPES) {
+    const coord = TYPE_AXIS_COORDS[t.id];
+    if (!coord) continue;
+    const p = toCanvas(coord.x, coord.y);
+
+    // 外側グロー（タイプカラー）
+    const grad = ctx.createRadialGradient(p.cx, p.cy, 0, p.cx, p.cy, W * 0.055);
+    grad.addColorStop(0, t.color.replace("0.8", "0.22"));
+    grad.addColorStop(1, "transparent");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.cx, p.cy, W * 0.055, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 点
+    ctx.beginPath();
+    ctx.arc(p.cx, p.cy, W * 0.026, 0, Math.PI * 2);
+    ctx.fillStyle = t.color.replace("0.8", "0.55");
+    ctx.fill();
+
+    // タイプコード（小）
+    ctx.fillStyle = t.color.replace("0.8", "0.5");
+    ctx.font      = `${Math.round(W * 0.02)}px monospace`;
+    ctx.textAlign = coord.x > 0 ? "left" : "right";
+    const offset  = W * 0.033;
+    ctx.fillText(
+      t.code.split("//")[0].trim(),
+      p.cx + (coord.x > 0 ? offset : -offset),
+      p.cy + Math.round(W * 0.012)
+    );
+  }
+  ctx.textAlign = "left";
+
+  // ── 自分の座標 ──
+  const myCoord = calcAxisCoords(scores);
+  const myP     = toCanvas(myCoord.x, myCoord.y);
+
+  // パルスリング
+  const now = Date.now();
+  const pulse = (Math.sin(now / 500) + 1) / 2;
+  const grad2 = ctx.createRadialGradient(myP.cx, myP.cy, 0, myP.cx, myP.cy, W * 0.09);
+  grad2.addColorStop(0, `rgba(255,255,255,${0.12 + pulse * 0.08})`);
+  grad2.addColorStop(1, "transparent");
+  ctx.fillStyle = grad2;
+  ctx.beginPath();
+  ctx.arc(myP.cx, myP.cy, W * 0.09, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 白い点（自分）
+  ctx.beginPath();
+  ctx.arc(myP.cx, myP.cy, W * 0.038, 0, Math.PI * 2);
+  ctx.fillStyle   = "rgba(255,255,255,0.95)";
+  ctx.shadowBlur  = 12;
+  ctx.shadowColor = "#fff";
+  ctx.fill();
+  ctx.shadowBlur  = 0;
+
+  // 中心点
+  ctx.beginPath();
+  ctx.arc(myP.cx, myP.cy, W * 0.015, 0, Math.PI * 2);
+  ctx.fillStyle = "#070c16";
+  ctx.fill();
+
+  // YOU ラベル
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  ctx.font      = `bold ${Math.round(W * 0.028)}px monospace`;
+  ctx.textAlign = myCoord.x > 0 ? "right" : "left";
+  ctx.fillText(
+    "▶ YOU",
+    myP.cx + (myCoord.x > 0 ? -(W * 0.046) : W * 0.046),
+    myP.cy - W * 0.03
+  );
+  ctx.textAlign = "left";
+
+  // 更新（アニメーションループ）
+  if (window._axisMapRunning) {
+    requestAnimationFrame(drawAxisMap);
+  }
+}
+
+/** 二軸マップの凡例を生成 */
+function buildAxisMapLegend() {
+  const legend = document.getElementById("axis-map-legend");
+  if (!legend) return;
+  const myCoord = calcAxisCoords(scores);
+
+  // 最も近いタイプを3つ探す
+  const distances = DIAGNOSIS_TYPES.map(t => {
+    const tc = TYPE_AXIS_COORDS[t.id];
+    const dx = tc.x - myCoord.x, dy = tc.y - myCoord.y;
+    return { t, dist: Math.sqrt(dx * dx + dy * dy) };
+  }).sort((a, b) => a.dist - b.dist).slice(0, 3);
+
+  const primary = diagnosePrimary();
+
+  legend.innerHTML = `
+    <p class="axis-legend-title mono">// YOUR COORDINATE</p>
+    <div class="axis-you-coord">
+      <span class="mono">X: ${myCoord.x >= 0 ? "ABSTRACTION" : "REALITY"}&nbsp;&nbsp;${Math.abs(myCoord.x * 100).toFixed(0)}%</span>
+      <span class="mono">Y: ${myCoord.y >= 0 ? "REVOLUTION" : "ORDER"}&nbsp;&nbsp;${Math.abs(myCoord.y * 100).toFixed(0)}%</span>
+    </div>
+    <p class="axis-legend-title mono" style="margin-top:14px;">// NEAREST TYPES</p>
+    <div class="axis-nearest-list">
+      ${distances.map((d, i) => `
+        <div class="axis-nearest-item ${d.t.id === primary.id ? "is-self" : ""}">
+          <span class="axis-nearest-dot" style="background:${d.t.color.replace("0.8","0.7")};"></span>
+          <span class="axis-nearest-code mono" style="color:${d.t.color};">${d.t.code.split("//")[0].trim()}</span>
+          <span class="axis-nearest-name">${d.t.name}</span>
+          ${d.t.id === primary.id ? '<span class="axis-you-badge mono">▶ YOU</span>' : ""}
+        </div>
+      `).join("")}
+    </div>
+    <p class="axis-map-note-text mono" id="axis-map-note"></p>
+  `;
+
+  // 座標説明文
+  const noteEl = document.getElementById("axis-map-note");
+  if (noteEl) {
+    const xDir = myCoord.x >= 0 ? "抽象・概念" : "現実・実践";
+    const yDir = myCoord.y >= 0 ? "革命・変革" : "秩序・維持";
+    noteEl.textContent =
+      `// この個体は ${xDir} 方向かつ ${yDir} 方向のベクトルを持つ。` +
+      `座標 (${(myCoord.x).toFixed(2)}, ${(myCoord.y).toFixed(2)}) に位置する。`;
+  }
+}
+
+/**
+ * 文明構造マップを描画する
+ * 4つの文明圏: 研究都市 / 官僚社会 / 芸術共同体 / 崩壊後文明
+ */
+const CIVILIZATION_ZONES = [
+  {
+    id:    "research_city",
+    name:  "研究都市",
+    nameEn:"RESEARCH CITY",
+    desc:  "知的探求が文明の中枢。孤高と協調が共存する高密度思考圏。",
+    color: "rgba(0,200,255,0.15)",
+    borderColor: "rgba(0,200,255,0.3)",
+    cx: 0.55, cy: -0.3,  // 軸マップ座標（x:抽象、y:やや秩序）
+    r: 0.40,
+    textColor: "rgba(0,200,255,0.7)"
+  },
+  {
+    id:    "bureaucratic",
+    name:  "官僚社会",
+    nameEn:"BUREAUCRATIC ORDER",
+    desc:  "秩序と継続性を最優先とする安定文明。個の自由は制限されるが基盤は強固。",
+    color: "rgba(255,160,0,0.12)",
+    borderColor: "rgba(255,160,0,0.3)",
+    cx: -0.55, cy: -0.55,
+    r: 0.38,
+    textColor: "rgba(255,160,0,0.7)"
+  },
+  {
+    id:    "art_commune",
+    name:  "芸術共同体",
+    nameEn:"ART COMMUNE",
+    desc:  "創造と感性が文明を駆動する。変化が日常であり、構造は流動的。",
+    color: "rgba(255,80,180,0.12)",
+    borderColor: "rgba(255,80,180,0.3)",
+    cx: 0.40, cy: 0.60,
+    r: 0.38,
+    textColor: "rgba(255,80,180,0.7)"
+  },
+  {
+    id:    "post_collapse",
+    name:  "崩壊後文明",
+    nameEn:"POST-COLLAPSE",
+    desc:  "既存秩序が崩れた後の再構築期。革命家と設計者が文明の核になる。",
+    color: "rgba(255,60,60,0.1)",
+    borderColor: "rgba(255,60,60,0.25)",
+    cx: -0.20, cy: 0.65,
+    r: 0.40,
+    textColor: "rgba(255,100,80,0.7)"
+  }
+];
+
+/** types.jsのcivilizationFitからゾーンとの親和性を算出 */
+function calcCivScore(typeId, zoneId) {
+  const t = DIAGNOSIS_TYPES.find(d => d.id === typeId);
+  if (!t || !t.civilizationFit) return 0;
+  const MAP_CIV = {
+    research_city:  "研究都市",
+    bureaucratic:   "官僚組織",
+    art_commune:    "芸術共同体",
+    post_collapse:  "崩壊後文明"
+  };
+  const key = MAP_CIV[zoneId];
+  const val  = t.civilizationFit[key];
+  if (!val) return 0.5;
+  return { "◎": 1.0, "○": 0.7, "△": 0.35, "×": 0.05 }[val] ?? 0.5;
+}
+
+/** 文明マップ描画 */
+function drawCivMap() {
+  const canvas = document.getElementById("civ-map-canvas");
+  if (!canvas) return;
+
+  const containerWidth = canvas.parentElement ? canvas.parentElement.offsetWidth : 460;
+  const W = Math.min(460, Math.max(280, containerWidth - 20));
+  const H = Math.round(W * 0.74);
+  canvas.width  = W;
+  canvas.height = H;
+
+  const ctx = canvas.getContext("2d");
+  const cx  = W / 2, cy = H / 2;
+  const R   = Math.min(W, H) * 0.43;
+
+  function toCanvas(lx, ly) {
+    return { cx: cx + lx * R, cy: cy - ly * R * 0.85 };
+  }
+
+  // 背景
+  ctx.fillStyle = "#070c16";
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(0,200,255,0.01)";
+  for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 2);
+
+  const primary  = diagnosePrimary();
+  const myCoord  = calcAxisCoords(scores);
+
+  // ── 文明圏を描画 ──
+  for (const zone of CIVILIZATION_ZONES) {
+    const p = toCanvas(zone.cx, zone.cy);
+    const pr = zone.r * R;
+
+    // スコア算出（主タイプとの親和性）
+    const affinity = calcCivScore(primary.id, zone.id);
+
+    // 自分のベクトル座標とゾーン中心の距離
+    const dx = myCoord.x - zone.cx;
+    const dy = myCoord.y - zone.cy;
+    const distToZone = Math.sqrt(dx * dx + dy * dy);
+    const isNearest  = distToZone < zone.r + 0.2;
+
+    // ゾーン背景グラデーション
+    const grad = ctx.createRadialGradient(p.cx, p.cy, 0, p.cx, p.cy, pr);
+    grad.addColorStop(0,   zone.color.replace("0.1", isNearest ? "0.25" : "0.08"));
+    grad.addColorStop(0.7, zone.color.replace("0.1", isNearest ? "0.12" : "0.03"));
+    grad.addColorStop(1,   "transparent");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(p.cx, p.cy, pr, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 枠線
+    ctx.beginPath();
+    ctx.arc(p.cx, p.cy, pr, 0, Math.PI * 2);
+    ctx.strokeStyle = isNearest
+      ? zone.borderColor.replace("0.3", "0.65")
+      : zone.borderColor.replace("0.3", "0.2");
+    ctx.lineWidth   = isNearest ? 1.5 : 0.8;
+    if (!isNearest) ctx.setLineDash([3, 4]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // ゾーン名ラベル
+    ctx.fillStyle  = zone.textColor.replace("0.7", isNearest ? "0.9" : "0.45");
+    ctx.font       = `${Math.round(W * 0.028)}px monospace`;
+    ctx.textAlign  = "center";
+    ctx.fillText(zone.nameEn, p.cx, p.cy - pr * 0.65);
+    ctx.font = `${Math.round(W * 0.022)}px 'Noto Sans JP',sans-serif`;
+    ctx.fillText(zone.name, p.cx, p.cy - pr * 0.65 + Math.round(W * 0.032));
+    ctx.textAlign = "left";
+  }
+
+  // ── 全タイプ点 ──
+  for (const t of DIAGNOSIS_TYPES) {
+    const ac = TYPE_AXIS_COORDS[t.id];
+    if (!ac) continue;
+    const p = toCanvas(ac.x, ac.y);
+
+    ctx.beginPath();
+    ctx.arc(p.cx, p.cy, W * 0.018, 0, Math.PI * 2);
+    ctx.fillStyle = t.id === primary.id
+      ? t.color.replace("0.8", "0.9")
+      : t.color.replace("0.8", "0.3");
+    ctx.fill();
+
+    if (t.id === primary.id) {
+      // 主タイプは大きく光る
+      const grd = ctx.createRadialGradient(p.cx, p.cy, 0, p.cx, p.cy, W * 0.06);
+      grd.addColorStop(0, t.color.replace("0.8", "0.2"));
+      grd.addColorStop(1, "transparent");
+      ctx.fillStyle = grd;
+      ctx.beginPath();
+      ctx.arc(p.cx, p.cy, W * 0.06, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ── 自分の座標 ──
+  const myP = toCanvas(myCoord.x, myCoord.y);
+  ctx.beginPath();
+  ctx.arc(myP.cx, myP.cy, W * 0.032, 0, Math.PI * 2);
+  ctx.fillStyle   = "rgba(255,255,255,0.9)";
+  ctx.shadowBlur  = 14;
+  ctx.shadowColor = "#fff";
+  ctx.fill();
+  ctx.shadowBlur  = 0;
+  ctx.beginPath();
+  ctx.arc(myP.cx, myP.cy, W * 0.013, 0, Math.PI * 2);
+  ctx.fillStyle = "#070c16";
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(255,255,255,0.75)";
+  ctx.font      = `bold ${Math.round(W * 0.026)}px monospace`;
+  ctx.textAlign = myCoord.x > 0 ? "right" : "left";
+  ctx.fillText("▶ YOU",
+    myP.cx + (myCoord.x > 0 ? -(W * 0.04) : W * 0.04),
+    myP.cy - W * 0.026
+  );
+  ctx.textAlign = "left";
+
+  // 凡例
+  buildCivMapLegend(primary, myCoord);
+}
+
+/** 文明マップの凡例を生成 */
+function buildCivMapLegend(primary, myCoord) {
+  const legend = document.getElementById("civ-map-legend");
+  if (!legend) return;
+
+  // 各ゾーンへの距離で近い順にソート
+  const ranked = CIVILIZATION_ZONES.map(zone => {
+    const dx = myCoord.x - zone.cx;
+    const dy = myCoord.y - zone.cy;
+    const dist     = Math.sqrt(dx * dx + dy * dy);
+    const affinity = calcCivScore(primary.id, zone.id);
+    return { zone, dist, affinity };
+  }).sort((a, b) => a.dist - b.dist);
+
+  legend.innerHTML = `
+    <p class="civ-legend-title mono">// CIVILIZATION AFFINITY RANKING</p>
+    <div class="civ-rank-list">
+      ${ranked.map((item, i) => {
+        const pct = Math.round((1 - Math.min(item.dist / 2, 1)) * 100);
+        const fitLabel = ["◎ IDEAL", "○ COMPATIBLE", "△ ADAPTABLE", "× HOSTILE"][
+          item.affinity >= 0.9 ? 0 : item.affinity >= 0.6 ? 1 : item.affinity >= 0.3 ? 2 : 3
+        ];
+        return `
+          <div class="civ-rank-item ${i === 0 ? "civ-rank-top" : ""}">
+            <div class="civ-rank-header">
+              <span class="civ-rank-num mono">${["01","02","03","04"][i]}</span>
+              <span class="civ-rank-name" style="color:${item.zone.textColor};">${item.zone.name}</span>
+              <span class="civ-rank-en mono" style="color:${item.zone.textColor.replace("0.7","0.45")};">${item.zone.nameEn}</span>
+              <span class="civ-fit-badge mono">${fitLabel}</span>
+            </div>
+            <div class="civ-rank-bar-wrap">
+              <div class="civ-rank-bar" style="width:${pct}%;background:${item.zone.borderColor};"></div>
+            </div>
+            ${i === 0 ? `<p class="civ-rank-desc">${item.zone.desc}</p>` : ""}
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+/** 両マップを結果画面に描画（showResult から呼ばれる） */
+function drawAllMaps() {
+  window._axisMapRunning = true;
+  drawAxisMap();
+  buildAxisMapLegend();
+  drawCivMap();
+}
+
+// ════════════════════════════════════════════
+// MENTAL STATE ANALYSIS
+// 追加10問でTYPE × STATEの現在状態を解析する。
+// メイン診断とは完全分離。scores には触れない。
+// ════════════════════════════════════════════
+
+let stateQuestionIndex = 0;
+let stateScores        = {};
+
+/** 結果画面の「INITIATE STATE ANALYSIS」ボタンから呼ばれる */
+function startStateAnalysis() {
+  // 初期化
+  stateQuestionIndex = 0;
+  stateScores = {};
+  for (const sid of Object.keys(MENTAL_STATES)) stateScores[sid] = 0;
+
+  // CTAパネルを非表示
+  const cta = document.getElementById("state-cta-panel");
+  if (cta) cta.style.display = "none";
+
+  // モーダルを開く
+  const modal = document.getElementById("state-modal");
+  if (modal) modal.classList.add("active");
+  document.body.style.overflow = "hidden";
+
+  renderStateQuestion();
+}
+
+/** SKIP ボタン */
+function skipStateAnalysis() {
+  const cta = document.getElementById("state-cta-panel");
+  if (cta) cta.style.display = "none";
+}
+
+/** ABORT ボタン（モーダル内） */
+function abortStateAnalysis() {
+  const modal = document.getElementById("state-modal");
+  if (modal) modal.classList.remove("active");
+  document.body.style.overflow = "";
+  // CTAを再表示
+  const cta = document.getElementById("state-cta-panel");
+  if (cta) cta.style.display = "";
+}
+
+/** 現在の質問を描画する */
+function renderStateQuestion() {
+  const q     = STATE_QUESTIONS[stateQuestionIndex];
+  const total = STATE_QUESTIONS.length;
+
+  // 進捗バー
+  const fill  = document.getElementById("state-prog-fill");
+  const label = document.getElementById("state-prog-label");
+  if (fill)  fill.style.width  = `${((stateQuestionIndex) / total) * 100}%`;
+  if (label) label.textContent = `${stateQuestionIndex + 1} / ${total}`;
+
+  // 質問テキスト
+  const preface = document.getElementById("state-q-preface");
+  const text    = document.getElementById("state-q-text");
+  if (preface) preface.textContent = q.preface;
+  if (text)    text.textContent    = q.text;
+
+  // フッターライン
+  const footer = document.getElementById("state-modal-footer");
+  if (footer) footer.textContent = `STATE PROBE ${String(stateQuestionIndex + 1).padStart(2,"0")} — READING STRUCTURAL CONDITION...`;
+
+  // 選択肢を描画
+  const opts = document.getElementById("state-options");
+  if (!opts) return;
+  opts.innerHTML = "";
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className   = "state-opt-btn mono";
+    btn.textContent = opt.text;
+    btn.onclick     = () => selectStateOption(opt);
+    opts.appendChild(btn);
+  });
+}
+
+/** 選択肢クリック時 */
+function selectStateOption(opt) {
+  // スコア加算
+  for (const [sid, val] of Object.entries(opt.scores)) {
+    if (stateScores[sid] !== undefined) stateScores[sid] += val;
+  }
+
+  stateQuestionIndex++;
+
+  if (stateQuestionIndex < STATE_QUESTIONS.length) {
+    // 次の問へ（軽いフェード）
+    const body = document.getElementById("state-modal-body");
+    if (body) {
+      body.style.opacity = "0";
+      body.style.transform = "translateY(6px)";
+      setTimeout(() => {
+        renderStateQuestion();
+        body.style.opacity   = "1";
+        body.style.transform = "translateY(0)";
+      }, 160);
+    } else {
+      renderStateQuestion();
+    }
+  } else {
+    // 全問完了 → 解析 → 結果表示
+    finishStateAnalysis();
+  }
+}
+
+/** 全問完了後の解析と結果表示 */
+function finishStateAnalysis() {
+  const footer = document.getElementById("state-modal-footer");
+  if (footer) footer.textContent = "CALCULATING MENTAL STATE... PLEASE WAIT";
+
+  // 演出ディレイ後に結果を出す
+  setTimeout(() => {
+    const modal = document.getElementById("state-modal");
+    if (modal) modal.classList.remove("active");
+    document.body.style.overflow = "";
+
+    // 状態算出
+    const state = calcMentalState(stateScores);
+
+    // タイプ別コメント取得
+    const primaryType = diagnosePrimary();
+    const typeComment = state.typeComments
+      ? (state.typeComments[primaryType.id] || "")
+      : "";
+
+    // 結果パネルを構築して表示
+    renderStateResult(state, typeComment);
+  }, 700);
+}
+
+/** STATE結果をDOMに描画 */
+function renderStateResult(state, typeComment) {
+  const panel = document.getElementById("state-result-panel");
+  if (!panel) return;
+  panel.style.display = "";
+
+  // バッジ
+  const badge     = document.getElementById("state-badge");
+  const badgeLabel = document.getElementById("state-badge-label");
+  const badgeName  = document.getElementById("state-badge-name");
+  if (badge)      badge.style.borderColor     = state.color;
+  if (badge)      badge.style.boxShadow       = `0 0 24px ${state.color.replace("0.85","0.2")}`;
+  if (badgeLabel) { badgeLabel.textContent = state.icon + " " + state.label; badgeLabel.style.color = state.color; }
+  if (badgeName)  badgeName.textContent = state.name;
+
+  // 状態説明
+  const condEl = document.getElementById("state-condition-text");
+  if (condEl) condEl.textContent = state.condition;
+
+  // タイプ別コメント
+  const commentEl = document.getElementById("state-type-comment");
+  if (commentEl) {
+    commentEl.innerHTML = typeComment
+      ? `<p class="state-type-comment-label mono">// TYPE-SPECIFIC ANALYSIS</p>
+         <p class="state-type-comment-text">${typeComment}</p>`
+      : "";
+  }
+
+  // 回復アドバイス
+  const recoveryEl = document.getElementById("state-recovery");
+  if (recoveryEl) {
+    if (state.recovery) {
+      recoveryEl.innerHTML = `
+        <p class="state-recovery-label mono">// RECOVERY PROTOCOL</p>
+        <p class="state-recovery-text">${state.recovery}</p>
+      `;
+    } else {
+      recoveryEl.innerHTML = "";
+    }
+  }
+
+  // アイコンにSTATE反映
+  const stateToIconState = {
+    STABLE: "normal", OVERCLOCKED: "runaway", FATIGUED: "runaway",
+    DETACHED: "runaway", SUPPRESSED: "runaway", RECOVERING: "normal",
+    COLLAPSED: "runaway", MATURE: "mature"
+  };
+  const iconState = stateToIconState[state.id] || "normal";
+  renderTypeIcon(currentIconTypeId, iconState);
+  // ボタンのactiveも更新
+  const stateBtn = document.querySelector(`.icon-state-btn[onclick*="${iconState}"]`);
+  if (stateBtn) {
+    document.querySelectorAll(".icon-state-btn").forEach(b => b.classList.remove("active"));
+    stateBtn.classList.add("active");
+  }
+
+  // スクロールして見せる
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ════════════════════════════════════════════
 // TYPE DOSSIER モーダル
 // 全タイプ図鑑。クリックで「研究ファイル閲覧」風に開く。
 // openDossier(typeId) … 指定タイプの詳細を表示
@@ -1074,6 +1834,7 @@ function buildTypeListHTML() {
       <div class="dossier-list-card ${isSelf ? "dossier-list-self" : ""}"
            onclick="openDossier('${t.id}')"
            style="border-color:${t.color.replace("0.8","0.25")}">
+        <div class="dossier-list-icon">${getTypeIcon(t.id, "normal")}</div>
         <span class="dossier-list-code mono" style="color:${t.color};">${t.code.split("//")[0].trim()}</span>
         <span class="dossier-list-name">${t.name}</span>
         <span class="dossier-list-role mono">${t.civilizationRole}</span>
@@ -1331,6 +2092,14 @@ function buildDossierHTML(type) {
     <!-- 基本情報 -->
     <div class="dossier-top">
       <div class="dossier-id-block">
+        <div class="dossier-icon-wrap">
+          ${getTypeIcon(type.id, "normal")}
+          <div class="dossier-icon-states mono">
+            <button class="dossier-icon-btn active" onclick="switchDossierIcon(this,'${type.id}','normal')">NRM</button>
+            <button class="dossier-icon-btn" onclick="switchDossierIcon(this,'${type.id}','runaway')">RNW</button>
+            <button class="dossier-icon-btn" onclick="switchDossierIcon(this,'${type.id}','mature')">MTR</button>
+          </div>
+        </div>
         <code class="dossier-code mono" style="color:${type.color};">${type.code}</code>
         <h2 class="dossier-name" style="text-shadow:0 0 20px ${type.color.replace("0.8","0.3")};">${type.name}</h2>
         <p class="dossier-desc mono">${type.description}</p>
@@ -1416,6 +2185,22 @@ function buildDossierHTML(type) {
 }
 
 /** 出現率コメント */
+/** モーダル内アイコン状態切り替え */
+function switchDossierIcon(btn, typeId, state) {
+  const wrap = btn.closest(".dossier-icon-wrap");
+  if (!wrap) return;
+  // SVG部分だけ差し替え（ボタン行は残す）
+  const existing = wrap.querySelector("svg");
+  if (existing) existing.remove();
+  const tmp = document.createElement("div");
+  tmp.innerHTML = getTypeIcon(typeId, state);
+  const newSvg = tmp.querySelector("svg");
+  if (newSvg) wrap.insertBefore(newSvg, wrap.querySelector(".dossier-icon-states"));
+  // activeクラス切り替え
+  wrap.querySelectorAll(".dossier-icon-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+}
+
 function getRarityComment(rarity) {
   if (rarity <= 3)   return "// EXTREMELY RARE";
   if (rarity <= 6)   return "// RARE";
