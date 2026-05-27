@@ -65,6 +65,12 @@
       </button>
     </div>
 
+    <div class="title-archive-wrap">
+      <button class="btn-archive-title mono" onclick="openDossierList()">
+        &gt; BROWSE TYPE DATABASE — 12 TYPES
+      </button>
+    </div>
+
   </section>
 
 
@@ -276,7 +282,81 @@ LAYER-III ACCESS: GRANTED</pre>
         <div id="top-params"></div>
       </div>
 
+      <!-- ⑤ パラメータ詳細解説（動的） -->
+      <div class="param-detail-panel panel-box">
+        <p class="section-label mono">▶ PARAMETER ANALYSIS — DETAILED REPORT</p>
+        <p class="param-detail-intro">上位パラメータの詳細分析。数値の意味と現在の状態を解説する。</p>
+        <div id="param-detail-container"></div>
+      </div>
+
+      <!-- ⑥ タイプ考察 -->
+      <div class="type-insight-panel panel-box">
+        <p class="section-label mono">▶ TYPE PROFILE — DEEP INSIGHT</p>
+
+        <div class="insight-block">
+          <p class="insight-label mono">// STRENGTHS</p>
+          <ul id="insight-strengths" class="insight-list"></ul>
+        </div>
+
+        <div class="insight-block">
+          <p class="insight-label mono">// WEAKNESSES</p>
+          <ul id="insight-weaknesses" class="insight-list weakness"></ul>
+        </div>
+
+        <div class="insight-block">
+          <p class="insight-label mono">// RUNAWAY PATTERN</p>
+          <p id="insight-runaway" class="insight-text runaway"></p>
+        </div>
+
+        <div class="insight-block">
+          <p class="insight-label mono">// HIGH-STRESS BEHAVIOR</p>
+          <p id="insight-stress" class="insight-text"></p>
+        </div>
+
+        <div class="insight-block">
+          <p class="insight-label mono">// MATURE STATE</p>
+          <p id="insight-mature" class="insight-text mature"></p>
+        </div>
+
+        <div class="insight-block env-block">
+          <p class="insight-label mono">// OPTIMAL ENVIRONMENT</p>
+          <p id="insight-env-best" class="insight-text env-best"></p>
+          <p class="insight-label mono" style="margin-top:10px;">// HAZARDOUS ENVIRONMENT</p>
+          <p id="insight-env-worst" class="insight-text env-worst"></p>
+        </div>
+      </div>
+
+      <!-- ⑦ タイプ相関 -->
+      <div class="relation-panel panel-box">
+        <p class="section-label mono">▶ TYPE RELATIONS — CIVILIZATION NETWORK</p>
+
+        <div class="relation-block">
+          <p class="relation-label synergy mono">◆ SYNERGY TYPES</p>
+          <div id="relation-synergy" class="relation-tags"></div>
+          <p id="relation-synergy-note" class="relation-note"></p>
+        </div>
+
+        <div class="relation-block">
+          <p class="relation-label tension mono">◆ TENSION TYPES</p>
+          <div id="relation-tension" class="relation-tags"></div>
+          <p id="relation-tension-note" class="relation-note"></p>
+        </div>
+
+        <!-- 全タイプ一覧 -->
+        <div class="all-types-block">
+          <p class="insight-label mono" style="margin-bottom:12px;">// ALL TYPES — CIVILIZATION MAP</p>
+          <div id="all-types-grid"></div>
+        </div>
+      </div>
+
     </div><!-- /#result-main -->
+
+    <!-- TYPE ARCHIVE ボタン -->
+    <div class="archive-btn-wrap">
+      <button class="btn-archive mono" onclick="openDossierList()">
+        &gt; OPEN TYPE ARCHIVE — ALL 12 TYPES
+      </button>
+    </div>
 
     <!-- シェアパネル -->
     <div class="share-panel">
@@ -302,6 +382,29 @@ LAYER-III ACCESS: GRANTED</pre>
 
   </section>
 
+
+  <!-- ════════════════════════════════
+    タイプ図鑑モーダル
+  ════════════════════════════════ -->
+  <div id="dossier-modal" class="dossier-overlay" onclick="closeDossier(event)">
+    <div class="dossier-panel" id="dossier-panel">
+
+      <!-- ヘッダー -->
+      <div class="dossier-header">
+        <span class="dossier-header-label mono">INST.#0047 // TYPE DATABASE</span>
+        <button class="dossier-close mono" onclick="closeDossierBtn()">[ CLOSE ]</button>
+      </div>
+
+      <!-- ターミナル演出ライン -->
+      <div class="dossier-access-line mono" id="dossier-access-line">ACCESSING TYPE DATABASE...</div>
+
+      <!-- コンテンツ -->
+      <div class="dossier-content" id="dossier-content">
+        <!-- JS で動的生成 -->
+      </div>
+
+    </div>
+  </div>
 
   <!-- フッター -->
   <footer class="site-footer">
