@@ -476,6 +476,620 @@ body{
 .btn-retry:hover{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 10px rgba(0,200,255,0.1);}
 
 /* ══════════════════════════════════
+   VECTOR AXIS MAP（二軸マップ）
+══════════════════════════════════ */
+.axis-map-panel {
+  margin-top: 28px;
+}
+.axis-map-sub {
+  font-size: 0.63rem;
+  color: rgba(0,200,255,0.3);
+  letter-spacing: 0.14em;
+  margin: 4px 0 18px;
+}
+.axis-map-wrap {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: start;
+}
+@media(max-width:640px) {
+  .axis-map-wrap { grid-template-columns: 1fr; }
+}
+.axis-map-svg-wrap {
+  position: relative;
+  display: inline-block;
+}
+/* 軸ラベル */
+.axis-label {
+  position: absolute;
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  color: rgba(0,200,255,0.38);
+  line-height: 1.4;
+  text-align: center;
+  pointer-events: none;
+}
+.axis-label span { display: block; color: rgba(0,200,255,0.22); font-size: 0.55rem; }
+.axis-top    { top: -2px;  left: 50%; transform: translateX(-50%); }
+.axis-bottom { bottom: -2px; left: 50%; transform: translateX(-50%); }
+.axis-left   { left: -2px; top: 50%; transform: translateY(-50%); }
+.axis-right  { right: -2px; top: 50%; transform: translateY(-50%); }
+
+#axis-map-canvas {
+  display: block;
+  max-width: 100%;
+}
+
+/* 凡例 */
+.axis-legend-title {
+  font-size: 0.62rem;
+  color: rgba(0,200,255,0.35);
+  letter-spacing: 0.15em;
+  display: block;
+  margin-bottom: 8px;
+}
+.axis-you-coord {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.axis-you-coord span {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.6);
+  letter-spacing: 0.08em;
+}
+.axis-nearest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.axis-nearest-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 8px;
+  border: 1px solid rgba(0,200,255,0.07);
+}
+.axis-nearest-item.is-self {
+  border-color: rgba(0,200,255,0.2);
+  background: rgba(0,200,255,0.04);
+}
+.axis-nearest-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.axis-nearest-code {
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+.axis-nearest-name {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  flex: 1;
+}
+.axis-you-badge {
+  font-size: 0.6rem;
+  color: #fff;
+  background: rgba(255,255,255,0.12);
+  padding: 2px 6px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.axis-map-note {
+  font-size: 0.63rem;
+  color: rgba(0,200,255,0.3);
+  letter-spacing: 0.1em;
+  margin-top: 16px;
+  display: block;
+}
+/* ══════════════════════════════════
+   文明構造マップ
+══════════════════════════════════ */
+.civ-map-panel { margin-top: 28px; }
+.civ-map-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+#civ-map-canvas {
+  display: block;
+  max-width: 100%;
+}
+.civ-legend-title {
+  font-size: 0.62rem;
+  color: rgba(0,200,255,0.35);
+  letter-spacing: 0.15em;
+  display: block;
+  margin-bottom: 12px;
+}
+.civ-rank-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.civ-rank-item {
+  padding: 10px 14px;
+  border: 1px solid rgba(0,200,255,0.07);
+  background: rgba(0,200,255,0.015);
+  transition: border-color 0.2s;
+}
+.civ-rank-item.civ-rank-top {
+  border-color: rgba(0,200,255,0.2);
+  background: rgba(0,200,255,0.04);
+}
+.civ-rank-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+}
+.civ-rank-num {
+  font-size: 0.65rem;
+  color: rgba(0,200,255,0.3);
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+.civ-rank-name {
+  font-size: 0.9rem;
+  font-family: var(--font-jp);
+  font-weight: 700;
+}
+.civ-rank-en {
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  flex: 1;
+}
+.civ-fit-badge {
+  font-size: 0.6rem;
+  color: rgba(0,200,255,0.5);
+  border: 1px solid rgba(0,200,255,0.15);
+  padding: 2px 7px;
+  flex-shrink: 0;
+}
+.civ-rank-bar-wrap {
+  height: 3px;
+  background: rgba(0,200,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.civ-rank-bar {
+  height: 100%;
+  border-radius: 2px;
+  opacity: 0.7;
+  transition: width 1s ease;
+}
+.civ-rank-desc {
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  line-height: 1.75;
+  margin: 0;
+}
+
+/* ══════════════════════════════════
+   MENTAL STATE ANALYSIS — 導線パネル
+══════════════════════════════════ */
+.state-cta-panel {
+  margin: 28px 0 0;
+  border: 1px solid rgba(0,200,255,0.2);
+  background: rgba(0,200,255,0.025);
+  position: relative;
+  overflow: hidden;
+}
+.state-cta-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(0,200,255,0.5), transparent);
+  animation: scan-top 3s ease-in-out infinite;
+}
+@keyframes scan-top {
+  0%,100% { opacity: 0.3; transform: scaleX(0.5); }
+  50%      { opacity: 1;   transform: scaleX(1); }
+}
+.state-cta-inner { padding: 24px 28px; }
+.state-cta-label {
+  font-size: 0.65rem;
+  color: rgba(0,200,255,0.4);
+  letter-spacing: 0.18em;
+  display: block;
+  margin-bottom: 8px;
+}
+.state-cta-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-family: var(--font-jp);
+  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+}
+.state-cta-desc {
+  font-size: 0.83rem;
+  color: var(--text-sub);
+  line-height: 1.85;
+  margin-bottom: 18px;
+}
+.state-cta-btns {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.btn-state-start {
+  background: rgba(0,200,255,0.06);
+  border: 1px solid rgba(0,200,255,0.45);
+  color: var(--cyan);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.14em;
+  padding: 11px 28px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+.btn-state-start:hover {
+  background: rgba(0,200,255,0.12);
+  box-shadow: 0 0 20px rgba(0,200,255,0.15);
+}
+.btn-state-skip {
+  background: transparent;
+  border: none;
+  color: rgba(0,200,255,0.25);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  padding: 8px 4px;
+  transition: color 0.2s;
+}
+.btn-state-skip:hover { color: rgba(0,200,255,0.5); }
+
+/* ══════════════════════════════════
+   STATE ANALYSIS モーダル
+══════════════════════════════════ */
+.state-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(4,8,14,0.94);
+  z-index: 1001;
+  overflow-y: auto;
+  backdrop-filter: blur(6px);
+}
+.state-modal-overlay.active { display: flex; align-items: center; justify-content: center; }
+.state-modal-panel {
+  width: 100%;
+  max-width: 640px;
+  margin: 40px auto;
+  background: #070d18;
+  border: 1px solid rgba(0,200,255,0.2);
+  box-shadow: 0 0 60px rgba(0,200,255,0.08);
+}
+@media(max-width:600px) {
+  .state-modal-panel { margin: 0; border-radius: 0; }
+}
+.state-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(0,200,255,0.1);
+  background: rgba(0,200,255,0.03);
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: rgba(0,200,255,0.4);
+  letter-spacing: 0.1em;
+}
+.state-modal-progress {
+  padding: 14px 20px 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid rgba(0,200,255,0.06);
+}
+.state-modal-prog-bar {
+  flex: 1;
+  height: 3px;
+  background: rgba(0,200,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.state-modal-prog-fill {
+  height: 100%;
+  background: rgba(0,200,255,0.6);
+  border-radius: 2px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 8px rgba(0,200,255,0.3);
+}
+.state-modal-prog-label {
+  font-size: 0.65rem;
+  color: rgba(0,200,255,0.35);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+.state-modal-body {
+  padding: 28px 28px 20px;
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+@media(max-width:480px) {
+  .state-modal-body { padding: 20px 16px 16px; }
+}
+.state-q-preface {
+  font-size: 0.62rem;
+  color: rgba(0,200,255,0.35);
+  letter-spacing: 0.15em;
+  margin-bottom: 12px;
+  display: block;
+}
+.state-q-text {
+  font-size: 1.05rem;
+  color: var(--text-main);
+  font-family: var(--font-jp);
+  line-height: 1.7;
+  font-weight: 700;
+  margin-bottom: 22px;
+}
+.state-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.state-opt-btn {
+  background: rgba(0,200,255,0.02);
+  border: 1px solid rgba(0,200,255,0.12);
+  color: var(--text-main);
+  font-family: var(--font-jp);
+  font-size: 0.88rem;
+  padding: 13px 16px;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.6;
+  transition: all 0.18s ease;
+  letter-spacing: 0.02em;
+}
+.state-opt-btn:hover {
+  background: rgba(0,200,255,0.07);
+  border-color: rgba(0,200,255,0.4);
+  color: #fff;
+  padding-left: 20px;
+}
+.state-opt-btn:active {
+  background: rgba(0,200,255,0.12);
+}
+.state-modal-footer {
+  padding: 10px 20px 14px;
+  font-size: 0.62rem;
+  color: rgba(0,200,255,0.25);
+  letter-spacing: 0.12em;
+  border-top: 1px solid rgba(0,200,255,0.06);
+  animation: pulse 2s infinite;
+}
+
+/* ══════════════════════════════════
+   STATE 結果パネル
+══════════════════════════════════ */
+.state-result-panel {
+  margin-top: 28px;
+  border: 1px solid rgba(0,200,255,0.15);
+}
+.state-result-inner {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  padding: 24px;
+  align-items: start;
+}
+@media(max-width:560px) {
+  .state-result-inner { grid-template-columns: 1fr; }
+}
+.state-badge-wrap {
+  display: flex;
+  justify-content: center;
+}
+.state-badge {
+  border: 2px solid rgba(0,200,255,0.4);
+  padding: 16px 20px;
+  text-align: center;
+  min-width: 120px;
+  transition: all 0.5s ease;
+}
+.state-badge-label {
+  display: block;
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  margin-bottom: 6px;
+}
+.state-badge-name {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-sub);
+  font-family: var(--font-jp);
+}
+.state-condition-text {
+  font-size: 0.85rem;
+  color: var(--text-main);
+  line-height: 1.85;
+  margin-bottom: 14px;
+}
+.state-type-comment {
+  margin-bottom: 14px;
+}
+.state-type-comment-label {
+  font-size: 0.62rem;
+  color: rgba(0,200,255,0.35);
+  letter-spacing: 0.15em;
+  margin-bottom: 6px;
+}
+.state-type-comment-text {
+  font-size: 0.83rem;
+  color: var(--text-sub);
+  line-height: 1.85;
+  padding: 10px 14px;
+  border-left: 2px solid rgba(0,200,255,0.2);
+  background: rgba(0,200,255,0.025);
+}
+.state-recovery-label {
+  font-size: 0.62rem;
+  color: rgba(80,200,120,0.5);
+  letter-spacing: 0.15em;
+  margin-bottom: 6px;
+}
+.state-recovery-text {
+  font-size: 0.82rem;
+  color: rgba(160,220,180,0.85);
+  line-height: 1.85;
+  padding: 10px 14px;
+  border-left: 2px solid rgba(80,200,120,0.25);
+  background: rgba(80,200,120,0.03);
+}
+
+/* ══════════════════════════════════
+   TYPE ICON（概念アバター）
+══════════════════════════════════ */
+
+/* 結果画面アイコンエリア */
+.type-icon-wrap {
+  width: 160px;
+  height: 160px;
+  margin: 0 auto 12px;
+  position: relative;
+  overflow: hidden;
+}
+.type-icon-wrap svg.type-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* スキャンライン演出 */
+.type-icon-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,0.08) 3px,
+    rgba(0,0,0,0.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* 状態切り替えUI */
+.icon-state-row {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.icon-state-label {
+  font-size: 0.62rem;
+  color: rgba(0,200,255,0.35);
+  letter-spacing: 0.12em;
+}
+.icon-state-label.state-label-runaway { color: rgba(255,60,60,0.6); }
+.icon-state-label.state-label-mature  { color: rgba(80,200,120,0.6); }
+.icon-state-btns {
+  display: flex;
+  gap: 4px;
+}
+.icon-state-btn {
+  background: transparent;
+  border: 1px solid rgba(0,200,255,0.15);
+  color: rgba(0,200,255,0.3);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  padding: 3px 8px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: all 0.2s;
+}
+.icon-state-btn:hover,
+.icon-state-btn.active {
+  border-color: rgba(0,200,255,0.5);
+  color: var(--cyan);
+  background: rgba(0,200,255,0.06);
+}
+
+/* モーダル内アイコン */
+.dossier-icon-wrap {
+  width: 140px;
+  height: 140px;
+  margin: 0 0 12px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.dossier-icon-wrap svg.type-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.dossier-icon-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,0.1) 3px,
+    rgba(0,0,0,0.1) 4px
+  );
+  pointer-events: none;
+}
+.dossier-icon-states {
+  display: flex;
+  gap: 3px;
+  margin-top: 4px;
+}
+.dossier-icon-btn {
+  background: transparent;
+  border: 1px solid rgba(0,200,255,0.12);
+  color: rgba(0,200,255,0.25);
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  padding: 2px 6px;
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  transition: all 0.2s;
+}
+.dossier-icon-btn:hover,
+.dossier-icon-btn.active {
+  border-color: rgba(0,200,255,0.45);
+  color: var(--cyan);
+}
+
+/* 全タイプ一覧カードのアイコン（小） */
+.dossier-list-icon {
+  width: 60px;
+  height: 60px;
+  margin: 0 0 8px;
+  overflow: hidden;
+  opacity: 0.85;
+}
+.dossier-list-icon svg { width: 100%; height: 100%; display: block; }
+
+/* アニメーション：runaway状態でのグリッチ感 */
+@keyframes glitch-shift {
+  0%,90%,100% { transform: translate(0); }
+  92% { transform: translate(-3px,1px); }
+  94% { transform: translate(3px,-1px); }
+  96% { transform: translate(-2px,2px); }
+  98% { transform: translate(2px,-2px); }
+}
+.type-svg.state-runaway {
+  animation: glitch-shift 4s infinite;
+}
+
+/* ══════════════════════════════════
    タイトル画面：TYPE DATABASE ボタン
 ══════════════════════════════════ */
 .title-archive-wrap {
