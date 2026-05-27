@@ -230,6 +230,20 @@ LAYER-III ACCESS: GRANTED</pre>
       <div class="result-grid-top">
 
         <div class="type-panel panel-box">
+          <!-- タイプアイコン（概念アバター） -->
+          <div class="type-icon-wrap" id="result-type-icon">
+            <!-- JS で動的挿入 -->
+          </div>
+          <!-- VISUAL RECORD ラベル -->
+          <div class="icon-state-row">
+            <span class="icon-state-label mono" id="icon-state-label">SUBJECT VISUAL RECORD</span>
+            <div class="icon-state-btns">
+              <button class="icon-state-btn active mono" onclick="switchIconState('normal',this)">NORMAL</button>
+              <button class="icon-state-btn mono" onclick="switchIconState('runaway',this)">RUNAWAY</button>
+              <button class="icon-state-btn mono" onclick="switchIconState('mature',this)">MATURE</button>
+            </div>
+          </div>
+
           <code id="result-type-code" class="mono type-code">TYPE-XX // ...</code>
           <span id="result-type-name" class="type-name">解析中...</span>
           <span id="result-description" class="type-desc mono">...</span>
@@ -351,6 +365,77 @@ LAYER-III ACCESS: GRANTED</pre>
 
     </div><!-- /#result-main -->
 
+    <!-- ★ 二軸マップ -->
+    <div class="axis-map-panel panel-box" id="axis-map-panel">
+      <p class="section-label mono">▶ VECTOR AXIS MAP — CIVILIZATION COORDINATE SYSTEM</p>
+      <p class="axis-map-sub mono">// X: REALITY ←→ ABSTRACTION &nbsp;|&nbsp; Y: ORDER ←→ REVOLUTION</p>
+      <div class="axis-map-wrap">
+        <div class="axis-map-svg-wrap">
+          <!-- 軸ラベル -->
+          <div class="axis-label axis-top mono">REVOLUTION<br><span>革命</span></div>
+          <div class="axis-label axis-bottom mono">ORDER<br><span>秩序</span></div>
+          <div class="axis-label axis-left mono"><span>現実</span><br>REALITY</div>
+          <div class="axis-label axis-right mono"><span>抽象</span><br>ABSTRACTION</div>
+          <!-- Canvas -->
+          <canvas id="axis-map-canvas" width="460" height="460"></canvas>
+        </div>
+        <div class="axis-map-legend" id="axis-map-legend">
+          <!-- JS で生成 -->
+        </div>
+      </div>
+      <p class="axis-map-note mono" id="axis-map-note"></p>
+    </div>
+
+    <!-- ★ 文明構造マップ -->
+    <div class="civ-map-panel panel-box" id="civ-map-panel">
+      <p class="section-label mono">▶ CIVILIZATION STRUCTURE MAP — HABITAT ANALYSIS</p>
+      <p class="axis-map-sub mono">// あなたの人格構造が最も適合する文明圏を可視化する</p>
+      <div class="civ-map-wrap">
+        <canvas id="civ-map-canvas" width="460" height="340"></canvas>
+      </div>
+      <div class="civ-map-legend" id="civ-map-legend">
+        <!-- JS で生成 -->
+      </div>
+    </div>
+
+    <!-- ★ MENTAL STATE ANALYSIS 導線 -->
+    <div class="state-cta-panel" id="state-cta-panel">
+      <div class="state-cta-inner">
+        <p class="state-cta-label mono">// ADDITIONAL ANALYSIS AVAILABLE</p>
+        <p class="state-cta-title">MENTAL STATE ANALYSIS</p>
+        <p class="state-cta-desc">
+          主診断で判明したタイプ構造は、現在の状態によって大きく変動する。<br>
+          追加解析（全10問）を実施することで、今この瞬間のベクトル状態を特定する。
+        </p>
+        <div class="state-cta-btns">
+          <button class="btn-state-start mono" onclick="startStateAnalysis()">
+            &gt; INITIATE STATE ANALYSIS
+          </button>
+          <button class="btn-state-skip mono" onclick="skipStateAnalysis()">
+            SKIP
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ★ MENTAL STATE 結果（診断後に表示） -->
+    <div class="state-result-panel panel-box" id="state-result-panel" style="display:none;">
+      <p class="section-label mono">▶ MENTAL STATE ANALYSIS — CURRENT CONDITION</p>
+      <div class="state-result-inner">
+        <div class="state-badge-wrap">
+          <div class="state-badge" id="state-badge">
+            <span class="state-badge-label mono" id="state-badge-label">—</span>
+            <span class="state-badge-name" id="state-badge-name">—</span>
+          </div>
+        </div>
+        <div class="state-detail-wrap">
+          <p class="state-condition-text" id="state-condition-text"></p>
+          <div class="state-type-comment" id="state-type-comment"></div>
+          <div class="state-recovery" id="state-recovery"></div>
+        </div>
+      </div>
+    </div>
+
     <!-- TYPE ARCHIVE ボタン -->
     <div class="archive-btn-wrap">
       <button class="btn-archive mono" onclick="openDossierList()">
@@ -384,6 +469,42 @@ LAYER-III ACCESS: GRANTED</pre>
 
 
   <!-- ════════════════════════════════
+    STATE ANALYSIS モーダル
+  ════════════════════════════════ -->
+  <div id="state-modal" class="state-modal-overlay">
+    <div class="state-modal-panel">
+
+      <div class="state-modal-header">
+        <span class="mono">INST.#0047 // STATE ANALYSIS MODULE</span>
+        <button class="dossier-close mono" onclick="abortStateAnalysis()">[ ABORT ]</button>
+      </div>
+
+      <!-- 進捗 -->
+      <div class="state-modal-progress">
+        <div class="state-modal-prog-bar">
+          <div class="state-modal-prog-fill" id="state-prog-fill"></div>
+        </div>
+        <span class="state-modal-prog-label mono" id="state-prog-label">1 / 10</span>
+      </div>
+
+      <!-- 質問エリア -->
+      <div class="state-modal-body" id="state-modal-body">
+        <p class="state-q-preface mono" id="state-q-preface">STATE PROBE 01</p>
+        <p class="state-q-text" id="state-q-text">質問テキスト</p>
+        <div class="state-options" id="state-options">
+          <!-- JS で動的生成 -->
+        </div>
+      </div>
+
+      <!-- ターミナルライン -->
+      <div class="state-modal-footer mono" id="state-modal-footer">
+        ANALYZING CURRENT CONDITION...
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════
     タイプ図鑑モーダル
   ════════════════════════════════ -->
   <div id="dossier-modal" class="dossier-overlay" onclick="closeDossier(event)">
@@ -414,6 +535,8 @@ LAYER-III ACCESS: GRANTED</pre>
 </div><!-- /.page-wrapper -->
 
 <script src="types.js"></script>
+<script src="state.js"></script>
+<script src="icons.js"></script>
 <script src="questions.js"></script>
 <script>
   window.addEventListener("DOMContentLoaded", () => {
