@@ -483,7 +483,7 @@ body{
 }
 .axis-map-sub {
   font-size: 0.63rem;
-  color: rgba(0,200,255,0.3);
+  color: rgba(0,200,255,0.55);
   letter-spacing: 0.14em;
   margin: 4px 0 18px;
 }
@@ -505,12 +505,12 @@ body{
   position: absolute;
   font-size: 0.6rem;
   letter-spacing: 0.1em;
-  color: rgba(0,200,255,0.38);
+  color: rgba(0,200,255,0.7);
   line-height: 1.4;
   text-align: center;
   pointer-events: none;
 }
-.axis-label span { display: block; color: rgba(0,200,255,0.22); font-size: 0.55rem; }
+.axis-label span { display: block; color: rgba(0,200,255,0.5); font-size: 0.55rem; }
 .axis-top    { top: -2px;  left: 50%; transform: translateX(-50%); }
 .axis-bottom { bottom: -2px; left: 50%; transform: translateX(-50%); }
 .axis-left   { left: -2px; top: 50%; transform: translateY(-50%); }
@@ -524,7 +524,7 @@ body{
 /* 凡例 */
 .axis-legend-title {
   font-size: 0.62rem;
-  color: rgba(0,200,255,0.35);
+  color: rgba(0,200,255,0.65);
   letter-spacing: 0.15em;
   display: block;
   margin-bottom: 8px;
@@ -537,7 +537,7 @@ body{
 }
 .axis-you-coord span {
   font-size: 0.72rem;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255,255,255,0.85);
   letter-spacing: 0.08em;
 }
 .axis-nearest-list {
@@ -568,7 +568,7 @@ body{
 }
 .axis-nearest-name {
   font-size: 0.75rem;
-  color: var(--text-sub);
+  color: rgba(180,210,230,0.9);
   flex: 1;
 }
 .axis-you-badge {
@@ -581,7 +581,7 @@ body{
 }
 .axis-map-note {
   font-size: 0.63rem;
-  color: rgba(0,200,255,0.3);
+  color: rgba(0,200,255,0.6);
   letter-spacing: 0.1em;
   margin-top: 16px;
   display: block;
@@ -601,7 +601,7 @@ body{
 }
 .civ-legend-title {
   font-size: 0.62rem;
-  color: rgba(0,200,255,0.35);
+  color: rgba(0,200,255,0.65);
   letter-spacing: 0.15em;
   display: block;
   margin-bottom: 12px;
@@ -630,7 +630,7 @@ body{
 }
 .civ-rank-num {
   font-size: 0.65rem;
-  color: rgba(0,200,255,0.3);
+  color: rgba(0,200,255,0.6);
   letter-spacing: 0.1em;
   flex-shrink: 0;
 }
@@ -646,8 +646,8 @@ body{
 }
 .civ-fit-badge {
   font-size: 0.6rem;
-  color: rgba(0,200,255,0.5);
-  border: 1px solid rgba(0,200,255,0.15);
+  color: rgba(0,200,255,0.85);
+  border: 1px solid rgba(0,200,255,0.35);
   padding: 2px 7px;
   flex-shrink: 0;
 }
@@ -666,7 +666,7 @@ body{
 }
 .civ-rank-desc {
   font-size: 0.78rem;
-  color: var(--text-sub);
+  color: rgba(180,210,230,0.85);
   line-height: 1.75;
   margin: 0;
 }
@@ -757,7 +757,7 @@ body{
   position: fixed;
   inset: 0;
   background: rgba(4,8,14,0.94);
-  z-index: 1001;
+  z-index: 2000;
   overflow-y: auto;
   backdrop-filter: blur(6px);
 }
