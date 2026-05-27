@@ -608,6 +608,15 @@ function renderResult(early = false) {
   // ─── ランキング ───
   renderTopParams();
 
+  // ─── パラメータ詳細 ───
+  renderParamDetails();
+
+  // ─── タイプ考察 ───
+  renderTypeInsight(primary);
+
+  // ─── タイプ相関 ───
+  renderTypeRelations(primary);
+
   // ─── フェードイン ───
   document.getElementById("result-main").classList.remove("fade-in");
   void document.getElementById("result-main").offsetWidth;
@@ -908,4 +917,561 @@ function renderTopParams() {
       </div>
     `;
   });
+}
+
+
+// ════════════════════════════════════════════
+// パラメータ詳細解説レンダリング
+// 上位5パラメータについて説明・高い場合・暴走時 を表示
+// ════════════════════════════════════════════
+
+function renderParamDetails() {
+  const sorted = Object.entries(scores).sort((a,b) => b[1]-a[1]).slice(0,5);
+  const maxAll  = sorted[0][1] || 1;
+  const c = document.getElementById("param-detail-container");
+  if (!c) return;
+  c.innerHTML = "";
+
+  sorted.forEach(([key, val]) => {
+    const detail = PARAM_DETAILS[key];
+    if (!detail) return;
+
+    // 数値帯で状態テキストを選択
+    const ratio = val / maxAll;
+    let stateText, stateClass;
+    if (ratio >= 0.85) {
+      stateText  = "// EXCESSIVE: " + detail.runaway;
+      stateClass = "state-excessive";
+    } else if (ratio >= 0.65) {
+      stateText  = "// HIGH: " + detail.high;
+      stateClass = "state-high";
+    } else if (ratio >= 0.4) {
+      stateText  = "// MID: " + detail.desc;
+      stateClass = "state-mid";
+    } else {
+      stateText  = "// LOW: " + detail.low;
+      stateClass = "state-low";
+    }
+
+    c.innerHTML += `
+      <div class="param-detail-item">
+        <div class="param-detail-header">
+          <span class="param-detail-name mono">${detail.label}</span>
+          <span class="param-detail-val mono">${val}</span>
+        </div>
+        <p class="param-detail-desc">${detail.desc}</p>
+        <p class="param-detail-state ${stateClass} mono">${stateText}</p>
+      </div>
+    `;
+  });
+}
+
+
+// ════════════════════════════════════════════
+// タイプ考察レンダリング（長所・弱点・暴走・ストレス・成熟・環境）
+// ════════════════════════════════════════════
+
+function renderTypeInsight(type) {
+  // 長所
+  const sl = document.getElementById("insight-strengths");
+  if (sl) {
+    sl.innerHTML = (type.strengths || []).map(s => `<li>${s}</li>`).join("");
+  }
+  // 弱点
+  const wl = document.getElementById("insight-weaknesses");
+  if (wl) {
+    wl.innerHTML = (type.weaknesses || []).map(w => `<li>${w}</li>`).join("");
+  }
+  // 暴走
+  const rw = document.getElementById("insight-runaway");
+  if (rw) rw.textContent = type.runaway || "—";
+  // ストレス
+  const st = document.getElementById("insight-stress");
+  if (st) st.textContent = type.stress || "—";
+  // 成熟
+  const mt = document.getElementById("insight-mature");
+  if (mt) mt.textContent = type.mature || "—";
+  // 環境
+  const eb = document.getElementById("insight-env-best");
+  if (eb) eb.textContent = (type.environment && type.environment.best) || "—";
+  const ew = document.getElementById("insight-env-worst");
+  if (ew) ew.textContent = (type.environment && type.environment.worst) || "—";
+}
+
+
+// ════════════════════════════════════════════
+// タイプ相関レンダリング
+// ════════════════════════════════════════════
+
+// ════════════════════════════════════════════
+// TYPE DOSSIER モーダル
+// 全タイプ図鑑。クリックで「研究ファイル閲覧」風に開く。
+// openDossier(typeId) … 指定タイプの詳細を表示
+// openDossierList()  … 全タイプ一覧を表示（TYPE ARCHIVEボタン用）
+// ════════════════════════════════════════════
+
+function openDossierList() {
+  const modal   = document.getElementById("dossier-modal");
+  const content = document.getElementById("dossier-content");
+  const access  = document.getElementById("dossier-access-line");
+
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden";
+
+  access.textContent = "ACCESSING TYPE DATABASE...";
+  content.innerHTML  = "";
+
+  setTimeout(() => {
+    access.textContent = "ALL RECORDS LOADED — " + DIAGNOSIS_TYPES.length + " ENTRIES";
+    content.innerHTML = buildTypeListHTML();
+  }, 600);
+}
+
+function openDossier(typeId) {
+  const type    = DIAGNOSIS_TYPES.find(t => t.id === typeId);
+  if (!type) return;
+
+  const modal   = document.getElementById("dossier-modal");
+  const content = document.getElementById("dossier-content");
+  const access  = document.getElementById("dossier-access-line");
+
+  modal.classList.add("active");
+  document.body.style.overflow = "hidden";
+
+  access.textContent = `ACCESSING: ${type.code}...`;
+  content.innerHTML  = "";
+
+  setTimeout(() => {
+    access.textContent = `RECORD UNLOCKED: ${type.name}`;
+    content.innerHTML  = buildDossierHTML(type);
+  }, 500);
+}
+
+function closeDossierBtn() {
+  const modal = document.getElementById("dossier-modal");
+  modal.classList.remove("active");
+  document.body.style.overflow = "";
+}
+
+function closeDossier(event) {
+  // オーバーレイ（背景）クリックで閉じる
+  if (event.target.id === "dossier-modal") {
+    closeDossierBtn();
+  }
+}
+
+/** 全タイプ一覧HTML */
+function buildTypeListHTML() {
+  // タイトル画面からの呼び出し時はスコア未確定のため null 扱い
+  const hasDiagnosis = currentQuestionIndex > 0 && Object.keys(scores).length > 0;
+  const primaryType = (hasDiagnosis && typeof diagnosePrimary === "function") ? diagnosePrimary() : null;
+
+  let html = `<div class="dossier-list-grid">`;
+  DIAGNOSIS_TYPES.forEach(t => {
+    const isSelf = primaryType && t.id === primaryType.id;
+    const rarityBar = Math.round((t.rarity || 5) / 100 * 200);
+    html += `
+      <div class="dossier-list-card ${isSelf ? "dossier-list-self" : ""}"
+           onclick="openDossier('${t.id}')"
+           style="border-color:${t.color.replace("0.8","0.25")}">
+        <span class="dossier-list-code mono" style="color:${t.color};">${t.code.split("//")[0].trim()}</span>
+        <span class="dossier-list-name">${t.name}</span>
+        <span class="dossier-list-role mono">${t.civilizationRole}</span>
+        <div class="dossier-rarity-row mono">
+          <span>出現率</span>
+          <div class="dossier-rarity-track"><div class="dossier-rarity-bar" style="width:${Math.min(rarityBar,200)}px;background:${t.color};"></div></div>
+          <span>${t.rarity || "—"}%</span>
+        </div>
+        ${isSelf ? '<span class="dossier-self-badge mono">▶ YOU</span>' : ""}
+        <span class="dossier-open-hint mono">&gt; OPEN DOSSIER</span>
+      </div>
+    `;
+  });
+  html += `</div>`;
+  return html;
+}
+
+/** タイプ詳細HTML */
+function buildDossierHTML(type) {
+  const hasDiagnosis = currentQuestionIndex > 0 && Object.keys(scores).length > 0;
+  const primaryType = (hasDiagnosis && typeof diagnosePrimary === "function") ? diagnosePrimary() : null;
+  const isSelf = primaryType && type.id === primaryType.id;
+
+  // ─── 自分との差異 ───
+  let diffHTML = "";
+  if (primaryType && !isSelf) {
+    // 自分のスコアとそのタイプの主要パラメータを比較
+    const myPrimaryScore = primaryType.primaryParams.reduce((s, p) => s + (scores[p] || 0), 0);
+    const thatPrimaryScore = type.primaryParams.reduce((s, p) => s + (scores[p] || 0), 0);
+    const diffs = type.primaryParams.map(p => ({
+      label: PARAM_LABELS[p] || p,
+      key: p,
+      mine: scores[p] || 0,
+      theirs: (scores[p] || 0)  // 自分の同パラメータ値との差を示す
+    })).sort((a,b) => Math.abs(b.theirs - b.mine) - Math.abs(a.theirs - a.mine));
+
+    // このタイプのprimaryParams での自分の値 vs タイプ平均（仮想）
+    diffHTML = `
+      <div class="dossier-section">
+        <p class="dossier-section-label mono">// YOUR VECTOR PROXIMITY</p>
+        <p class="dossier-diff-note">あなたのスコアでこのタイプの主要パラメータを見た場合：</p>
+        <div class="dossier-diff-list">
+          ${type.primaryParams.map(p => {
+            const v = scores[p] || 0;
+            const maxPossible = 60;
+            const pct = Math.round(v / maxPossible * 100);
+            return `<div class="dossier-diff-row">
+              <span class="dossier-diff-label mono">${PARAM_LABELS[p] || p}</span>
+              <div class="dossier-diff-track"><div class="dossier-diff-bar" style="width:${pct}%;background:${type.color};"></div></div>
+              <span class="dossier-diff-val mono">${v}</span>
+            </div>`;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  // ─── 文明適性マップ ───
+  const fitSymbolClass = { "◎": "fit-s", "○": "fit-a", "△": "fit-b", "×": "fit-x" };
+  let fitHTML = "";
+  if (type.civilizationFit) {
+    const rows = Object.entries(type.civilizationFit).map(([env, sym]) => `
+      <div class="fit-row">
+        <span class="fit-env">${env}</span>
+        <span class="fit-sym ${fitSymbolClass[sym] || ""}">${sym}</span>
+      </div>
+    `).join("");
+    fitHTML = `
+      <div class="dossier-section">
+        <p class="dossier-section-label mono">// CIVILIZATION FIT MAP</p>
+        <div class="fit-grid">${rows}</div>
+      </div>
+    `;
+  }
+
+  // ─── あるある ───
+  let aruaruHTML = "";
+  if (type.aruaru && type.aruaru.length) {
+    aruaruHTML = `
+      <div class="dossier-section">
+        <p class="dossier-section-label mono">// ${type.name} あるある</p>
+        <ul class="dossier-aruaru">
+          ${type.aruaru.map(a => `<li>${a}</li>`).join("")}
+        </ul>
+      </div>
+    `;
+  }
+
+  // ─── シナジー・テンション ───
+  const synTypes  = (type.relations && type.relations.synergy || []).map(id => DIAGNOSIS_TYPES.find(d => d.id === id)).filter(Boolean);
+  const tenTypes  = (type.relations && type.relations.tension  || []).map(id => DIAGNOSIS_TYPES.find(d => d.id === id)).filter(Boolean);
+
+  const relHTML = `
+    <div class="dossier-section">
+      <p class="dossier-section-label mono">// TYPE RELATIONS</p>
+      <div class="dossier-rel-row">
+        <div class="dossier-rel-block">
+          <p class="dossier-rel-label synergy mono">◆ SYNERGY</p>
+          ${synTypes.map(t => `
+            <div class="dossier-rel-card" onclick="openDossier('${t.id}')" style="border-color:${t.color.replace("0.8","0.4")};">
+              <span class="dossier-rel-code mono" style="color:${t.color};">${t.code.split("//")[0].trim()}</span>
+              <span class="dossier-rel-name">${t.name}</span>
+              <span class="dossier-rel-hint mono">&gt; VIEW</span>
+            </div>
+          `).join("")}
+          <p class="dossier-rel-note">${type.synergyNote || ""}</p>
+        </div>
+        <div class="dossier-rel-block">
+          <p class="dossier-rel-label tension mono">◆ TENSION</p>
+          ${tenTypes.map(t => `
+            <div class="dossier-rel-card tension-card" onclick="openDossier('${t.id}')">
+              <span class="dossier-rel-code mono" style="color:rgba(255,100,80,0.8);">${t.code.split("//")[0].trim()}</span>
+              <span class="dossier-rel-name">${t.name}</span>
+              <span class="dossier-rel-hint mono">&gt; VIEW</span>
+            </div>
+          `).join("")}
+          <p class="dossier-rel-note">${type.tensionNote || ""}</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // ─── ① タイプ間ストーリー ───
+  // このタイプが関わる全ストーリーを検索
+  const myStories = Object.entries(TYPE_STORIES || {})
+    .filter(([key]) => key.split("___").includes(type.id))
+    .map(([key, story]) => {
+      const otherIds = key.split("___").filter(id => id !== type.id);
+      const others   = otherIds.map(id => DIAGNOSIS_TYPES.find(d => d.id === id)).filter(Boolean);
+      return { story, others, key };
+    });
+
+  let storyHTML = "";
+  if (myStories.length) {
+    const cards = myStories.map(({ story, others }) => {
+      const otherNames = others.map(o =>
+        `<span style="color:${o.color};font-weight:700;">${o.name}</span>`
+      ).join(" × ");
+      return `
+        <div class="story-card">
+          <div class="story-card-header">
+            <span class="story-tag mono" style="border-color:${story.tagColor};color:${story.tagColor};">${story.tag}</span>
+            <span class="story-vs mono">${type.name} × ${others.map(o=>o.name).join(" × ")}</span>
+          </div>
+          <p class="story-title">${story.title}</p>
+          <p class="story-scenario">${story.scenario.trim().replace(/\n/g, "<br>")}</p>
+        </div>
+      `;
+    }).join("");
+    storyHTML = `
+      <div class="dossier-section">
+        <p class="dossier-section-label mono">// TYPE STORIES — CIVILIZATION DRAMA</p>
+        ${cards}
+      </div>
+    `;
+  }
+
+  // ─── ② 危険な融合 ───
+  const myFusions = (DANGEROUS_FUSIONS || []).filter(f => f.types.includes(type.id));
+  let fusionHTML = "";
+  if (myFusions.length) {
+    const cards = myFusions.map(f => {
+      const bars = Array.from({ length: 5 }, (_, i) =>
+        `<span class="danger-pip ${i < f.dangerLevel ? "pip-on" : ""}"></span>`
+      ).join("");
+      const partnerIds = f.types.filter(id => id !== type.id);
+      const partners   = partnerIds.map(id => {
+        const pt = DIAGNOSIS_TYPES.find(d => d.id === id);
+        return pt
+          ? `<span class="fusion-partner-tag" onclick="openDossier('${pt.id}')"
+               style="border-color:${pt.color.replace("0.8","0.4")};color:${pt.color};">${pt.name}</span>`
+          : "";
+      }).join("");
+      return `
+        <div class="fusion-card" style="border-color:${f.color}33;">
+          <div class="fusion-header">
+            <span class="fusion-code mono" style="color:${f.color};">${f.code}</span>
+            <div class="danger-pips">${bars}</div>
+          </div>
+          <p class="fusion-name" style="color:${f.color};">${f.name}</p>
+          <div class="fusion-partners">${partners}</div>
+          <p class="fusion-effect">${f.effect}</p>
+          <p class="fusion-potential mono">// POTENTIAL: ${f.potential}</p>
+        </div>
+      `;
+    }).join("");
+    fusionHTML = `
+      <div class="dossier-section">
+        <p class="dossier-section-label mono">// DANGEROUS FUSION — COMBINATION ANALYSIS</p>
+        ${cards}
+      </div>
+    `;
+  }
+
+  // ─── ③ タイプ進化 ───
+  const evolutions = (TYPE_EVOLUTIONS || {})[type.id] || [];
+  let evolutionHTML = "";
+  if (evolutions.length) {
+    const rows = evolutions.map(ev => {
+      const target = DIAGNOSIS_TYPES.find(d => d.id === ev.target);
+      return `
+        <div class="evo-row">
+          <div class="evo-condition">${ev.condition}</div>
+          <div class="evo-arrow mono">→</div>
+          <div class="evo-target" onclick="${target ? `openDossier('${target.id}')` : ""}"
+               style="${target ? `color:${target.color};border-color:${target.color.replace("0.8","0.3")};` : ""}">
+            <span class="evo-label mono">${ev.label}</span>
+            ${target ? `<span class="evo-name">${target.name}</span>` : ""}
+          </div>
+        </div>
+      `;
+    }).join("");
+    evolutionHTML = `
+      <div class="dossier-section">
+        <p class="dossier-section-label mono">// TYPE EVOLUTION — VECTOR SHIFT</p>
+        <p class="evo-note">特定の条件下で、このタイプは別のベクトルへ偏移する可能性がある。</p>
+        ${rows}
+      </div>
+    `;
+  }
+
+  // ─── ④ 偉人マッチ ───
+  const figures = (FAMOUS_FIGURES || {})[type.id] || [];
+  let figureHTML = "";
+  if (figures.length) {
+    const cards = figures.map((fig, i) => `
+      <div class="figure-card">
+        <span class="figure-rank mono">${String(i+1).padStart(2,"0")}</span>
+        <div class="figure-info">
+          <span class="figure-name">${fig.name}</span>
+          <span class="figure-desc">${fig.desc}</span>
+        </div>
+      </div>
+    `).join("");
+    figureHTML = `
+      <div class="dossier-section">
+        <p class="dossier-section-label mono">// FAMOUS FIGURES — ARCHETYPE MATCH</p>
+        <p class="figure-note">このタイプに近い特性を持つと観測された歴史上の人物。</p>
+        ${cards}
+      </div>
+    `;
+  }
+
+  // ─── ドラマ文（シンプル版、ストーリーがない場合のフォールバック） ───
+  const dramaLines = myStories.length === 0
+    ? synTypes.map(st =>
+        `<p class="drama-line"><span class="drama-type" style="color:${type.color};">${type.name}</span>は、<span class="drama-type" style="color:${st.color};">${st.name}</span>によって補完される。</p>`
+      ).join("")
+    + tenTypes.map(tt =>
+        `<p class="drama-line"><span class="drama-type" style="color:${type.color};">${type.name}</span>と<span class="drama-type" style="color:rgba(255,100,80,0.9);">${tt.name}</span>は思想的衝突が起こりやすい。</p>`
+      ).join("")
+    : "";
+
+  return `
+    <!-- 基本情報 -->
+    <div class="dossier-top">
+      <div class="dossier-id-block">
+        <code class="dossier-code mono" style="color:${type.color};">${type.code}</code>
+        <h2 class="dossier-name" style="text-shadow:0 0 20px ${type.color.replace("0.8","0.3")};">${type.name}</h2>
+        <p class="dossier-desc mono">${type.description}</p>
+        <div class="dossier-rarity-inline mono">
+          <span>RARITY: </span>
+          <span style="color:${type.color};">${type.rarity || "—"}%</span>
+          <span class="rarity-comment">${getRarityComment(type.rarity || 5)}</span>
+        </div>
+      </div>
+      <div class="dossier-role-block">
+        <p class="dossier-section-label mono">// CIVILIZATION ROLE</p>
+        <p class="dossier-role-text">${type.civilizationRole}</p>
+        <p class="dossier-detail">${(type.detail || "").trim()}</p>
+      </div>
+    </div>
+
+    <!-- タイプ間ドラマ（ストーリーなしの場合のフォールバック） -->
+    ${dramaLines ? `<div class="dossier-section drama-section"><p class="dossier-section-label mono">// TYPE DRAMA</p>${dramaLines}</div>` : ""}
+
+    <!-- ① タイプ間ストーリー -->
+    ${storyHTML}
+
+    <!-- ④ 偉人マッチ -->
+    ${figureHTML}
+
+    <!-- あるある -->
+    ${aruaruHTML}
+
+    <!-- 文明適性 -->
+    ${fitHTML}
+
+    <!-- ③ タイプ進化 -->
+    ${evolutionHTML}
+
+    <!-- 長所・弱点 -->
+    <div class="dossier-section">
+      <p class="dossier-section-label mono">// STRENGTHS / WEAKNESSES</p>
+      <div class="dossier-sw-row">
+        <div>
+          <p class="dossier-sw-label strength mono">▲ STRENGTHS</p>
+          <ul class="dossier-sw-list strength-list">${(type.strengths||[]).map(s=>`<li>${s}</li>`).join("")}</ul>
+        </div>
+        <div>
+          <p class="dossier-sw-label weakness mono">▼ WEAKNESSES</p>
+          <ul class="dossier-sw-list weakness-list">${(type.weaknesses||[]).map(w=>`<li>${w}</li>`).join("")}</ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 暴走・成熟 -->
+    <div class="dossier-section">
+      <p class="dossier-section-label mono">// RUNAWAY / MATURE</p>
+      <div class="dossier-rm-row">
+        <div class="dossier-runaway"><p class="dossier-rm-label runaway mono">⚠ RUNAWAY</p><p>${type.runaway||"—"}</p></div>
+        <div class="dossier-mature"><p class="dossier-rm-label mature mono">▶ MATURE</p><p>${type.mature||"—"}</p></div>
+      </div>
+    </div>
+
+    <!-- 環境 -->
+    <div class="dossier-section">
+      <p class="dossier-section-label mono">// OPTIMAL ENVIRONMENT</p>
+      <p class="env-text best">◎ ${(type.environment && type.environment.best)||"—"}</p>
+      <p class="dossier-section-label mono" style="margin-top:8px;">// HAZARDOUS ENVIRONMENT</p>
+      <p class="env-text worst">× ${(type.environment && type.environment.worst)||"—"}</p>
+    </div>
+
+    <!-- タイプ相関 -->
+    ${relHTML}
+
+    <!-- ② 危険な融合 -->
+    ${fusionHTML}
+
+    <!-- 自分との差異 -->
+    ${diffHTML}
+
+    <!-- ナビゲーション：他タイプへ -->
+    <div class="dossier-nav">
+      <button class="dossier-nav-btn mono" onclick="openDossierList()">
+        &lt; BACK TO ALL TYPES
+      </button>
+    </div>
+  `;
+}
+
+/** 出現率コメント */
+function getRarityComment(rarity) {
+  if (rarity <= 3)   return "// EXTREMELY RARE";
+  if (rarity <= 6)   return "// RARE";
+  if (rarity <= 10)  return "// UNCOMMON";
+  if (rarity <= 20)  return "// COMMON";
+  return "// WIDESPREAD";
+}
+
+function renderTypeRelations(type) {
+  // シナジータイプ
+  const sc = document.getElementById("relation-synergy");
+  const sn = document.getElementById("relation-synergy-note");
+  if (sc) {
+    sc.innerHTML = (type.relations && type.relations.synergy || [])
+      .map(id => {
+        const t = DIAGNOSIS_TYPES.find(d => d.id === id);
+        return t ? `<span class="relation-tag synergy-tag" style="border-color:${t.color};color:${t.color};">${t.name}</span>` : "";
+      }).join("");
+  }
+  if (sn) sn.textContent = type.synergyNote || "";
+
+  // テンションタイプ
+  const tc = document.getElementById("relation-tension");
+  const tn = document.getElementById("relation-tension-note");
+  if (tc) {
+    tc.innerHTML = (type.relations && type.relations.tension || [])
+      .map(id => {
+        const t = DIAGNOSIS_TYPES.find(d => d.id === id);
+        return t ? `<span class="relation-tag tension-tag">${t.name}</span>` : "";
+      }).join("");
+  }
+  if (tn) tn.textContent = type.tensionNote || "";
+
+  // 全タイプ一覧グリッド
+  const grid = document.getElementById("all-types-grid");
+  if (grid) {
+    grid.innerHTML = DIAGNOSIS_TYPES.map(t => {
+      const isSelf    = t.id === type.id;
+      const isSynergy = (type.relations && type.relations.synergy || []).includes(t.id);
+      const isTension = (type.relations && type.relations.tension || []).includes(t.id);
+      let cls = "type-card";
+      if (isSelf)    cls += " type-card-self";
+      if (isSynergy) cls += " type-card-synergy";
+      if (isTension) cls += " type-card-tension";
+      return `
+        <div class="${cls}" style="border-color:${t.color.replace("0.8","0.22")};"
+             onclick="openDossier('${t.id}')" title="ファイルを開く">
+          <span class="type-card-code mono" style="color:${t.color};">${t.code.split("//")[0].trim()}</span>
+          <span class="type-card-name">${t.name}</span>
+          <span class="type-card-role mono">${t.civilizationRole}</span>
+          ${isSelf    ? '<span class="type-card-badge self-badge mono">YOU</span>'      : ""}
+          ${isSynergy ? '<span class="type-card-badge synergy-badge mono">SYNERGY</span>' : ""}
+          ${isTension ? '<span class="type-card-badge tension-badge mono">TENSION</span>' : ""}
+          <span class="type-card-open mono">&gt; OPEN</span>
+        </div>
+      `;
+    }).join("");
+  }
 }
