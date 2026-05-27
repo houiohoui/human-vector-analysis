@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HUMAN VECTOR ANALYSIS | 人間ベクトル分析診断</title>
+  <meta name="description" content="4層構造100問・20パラメータ・危険度分析。人格解析システム。">
+  <meta name="theme-color" content="#080c12">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <!-- ════════════════════════════════
+    共通ヘッダー
+  ════════════════════════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <span class="header-logo mono">INST.#0047 // ANALYSIS DIVISION</span>
+      <span class="header-title mono">[ HUMAN VECTOR ANALYSIS ]</span>
+      <span class="header-status mono">● SYSTEM ACTIVE</span>
+    </div>
+  </header>
+
+
+  <!-- ════════════════════════════════
+    画面01：タイトル
+  ════════════════════════════════ -->
+  <section id="title-screen">
+
+    <div>
+      <h1 class="title-main mono">HUMAN VECTOR<br>ANALYSIS</h1>
+      <p class="title-sub mono">人間ベクトル分析診断システム Ver.3.0</p>
+    </div>
+
+    <div class="terminal-box">
+      <pre id="title-log"></pre>
+    </div>
+
+    <div class="title-specs mono">
+      <span>// QUERIES: <em id="q-count">—</em></span>
+      <span>// PARAMS: 20</span>
+      <span>// TYPES: 10</span>
+      <span>// LAYERS: 4</span>
+    </div>
+
+    <!-- 一般層向けの導線テキスト -->
+    <div class="title-intro">
+      <p class="title-intro-main">
+        これは性格診断ではありません。<br>
+        あなたが<strong>社会・文明の中でどのような役割・傾向を持つか</strong>を<br>
+        20のパラメータで解析するシステムです。
+      </p>
+      <p class="title-intro-sub mono">
+        優劣はありません。全てのベクトルに意味があります。<br>
+        途中終了で暫定レポートも出力可能です。
+      </p>
+    </div>
+
+    <div id="start-btn">
+      <button class="btn-primary mono" onclick="startDiagnosis()">
+        <span>&gt; INITIATE ANALYSIS</span>
+      </button>
+    </div>
+
+  </section>
+
+
+  <!-- ════════════════════════════════
+    画面02：診断（ミニゲージ付き）
+  ════════════════════════════════ -->
+  <section id="quiz-screen">
+
+    <!-- 上部ステータスバー -->
+    <div class="quiz-statusbar">
+      <div class="quiz-status-left">
+        <span id="layer-label" class="mono layer-label">LAYER-I  DAILY BEHAVIOR</span>
+        <span id="analysis-msg" class="mono analysis-msg"></span>
+      </div>
+      <div class="quiz-status-right mono">
+        <span id="accuracy-display" class="accuracy-disp">ACCURACY: 0%</span>
+        <span id="progress-text">QUERY 001 / 100</span>
+      </div>
+    </div>
+
+    <!-- 進捗バー -->
+    <div class="progress-track" style="margin-bottom:16px;">
+      <div id="progress-bar"></div>
+    </div>
+
+    <!-- メインエリア：質問 + サイドゲージ -->
+    <div class="quiz-layout">
+
+      <!-- 左：ミニゲージパネル -->
+      <aside class="gauge-panel">
+        <p class="gauge-panel-title mono">VECTOR</p>
+        <div id="mini-gauge-container">
+          <!-- app.js から動的生成 -->
+        </div>
+      </aside>
+
+      <!-- 右：質問エリア -->
+      <div class="quiz-main">
+
+        <!-- 質問カード -->
+        <div id="question-card">
+          <span id="question-number" class="mono">[ QUERY_001 ]</span>
+          <p id="question-text">質問を読み込み中...</p>
+        </div>
+
+        <!-- 選択肢 -->
+        <div id="options-container"></div>
+
+        <!-- 途中終了ボタン -->
+        <div class="early-exit-area">
+          <button class="btn-early-exit mono" onclick="earlyExit()">
+            &gt; EXIT &amp; GENERATE PROVISIONAL REPORT
+          </button>
+        </div>
+
+      </div><!-- /.quiz-main -->
+    </div><!-- /.quiz-layout -->
+
+  </section>
+
+
+  <!-- ════════════════════════════════
+    画面03：層間中間解析
+  ════════════════════════════════ -->
+  <section id="mid-screen">
+    <div class="mid-inner">
+
+      <div class="mid-header">
+        <p class="mid-header-label mono">▶ INTERMEDIATE ANALYSIS</p>
+        <h2 id="mid-title" class="mono mid-title">LAYER-I ANALYSIS COMPLETE</h2>
+        <p id="mid-subtitle" class="mid-subtitle">日常行動パターン解析完了</p>
+      </div>
+
+      <div class="mid-body-box">
+        <pre id="mid-body" class="mono mid-body"></pre>
+      </div>
+
+      <div class="mid-accuracy-line mono">
+        <span id="mid-accuracy">解析精度: 38%</span>
+      </div>
+
+      <div class="mid-btn-row">
+        <button id="mid-continue-btn" class="btn-primary mono">
+          <span>&gt; CONTINUE ANALYSIS</span>
+        </button>
+        <button id="mid-exit-btn" class="btn-early-exit mono">
+          &gt; GENERATE REPORT NOW
+        </button>
+      </div>
+
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════
+    画面04：深層警告（Layer III突入前）
+  ════════════════════════════════ -->
+  <section id="warning-screen">
+    <div class="warning-inner">
+
+      <p class="warning-label mono">⚠ DEEP LAYER WARNING ⚠</p>
+
+      <div class="warning-box">
+        <pre class="mono warning-text">WARNING:
+DEEP LAYER ANALYSIS WILL BEGIN.
+
+THIS SECTION CONTAINS EXTREME SCENARIO
+QUERIES DESIGNED TO DETECT CORE RESPONSE
+PATTERNS UNDER MAXIMUM COGNITIVE LOAD.
+
+SOME SUBJECTS REPORT COGNITIVE DISCOMFORT.
+
+LAYER-III ACCESS: GRANTED</pre>
+      </div>
+
+      <button id="warning-continue-btn" class="btn-primary mono" style="margin-top:28px;">
+        <span>&gt; PROCEED TO LAYER III</span>
+      </button>
+
+      <p class="warning-auto mono">自動進行まで 5 秒...</p>
+
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════
+    画面05：スキャン演出
+  ════════════════════════════════ -->
+  <section id="scan-screen">
+    <div class="scan-inner">
+      <p id="scan-title" class="scan-title mono">ANALYZING SUBJECT...</p>
+      <div class="scan-track">
+        <div id="scan-bar"></div>
+      </div>
+      <div class="scan-terminal">
+        <pre id="scan-log"></pre>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ════════════════════════════════
+    画面06：結果
+  ════════════════════════════════ -->
+  <section id="result-screen">
+
+    <!-- 解析完了ヘッダー -->
+    <div class="result-header">
+      <div id="result-badge" class="result-badge deep">DEEP ANALYSIS COMPLETE</div>
+      <h2 class="mono">VECTOR ANALYSIS REPORT</h2>
+      <p>対象個体の人間ベクトル解析が完了しました</p>
+    </div>
+
+    <div id="result-main">
+
+      <!-- ① タイプ + チャート -->
+      <div class="result-grid-top">
+
+        <div class="type-panel panel-box">
+          <code id="result-type-code" class="mono type-code">TYPE-XX // ...</code>
+          <span id="result-type-name" class="type-name">解析中...</span>
+          <span id="result-description" class="type-desc mono">...</span>
+
+          <div id="result-sub-type" class="sub-type-block">
+            <span class="sub-type-prefix mono">// SECONDARY VECTOR:</span>
+            <span id="sub-type-label" class="mono sub-type-label">—</span>
+          </div>
+
+          <div class="role-block">
+            <span class="role-prefix mono">// CIVILIZATION ROLE:</span>
+            <span id="civilization-role" class="mono role-value">—</span>
+          </div>
+
+          <p id="result-detail" class="type-detail"></p>
+        </div>
+
+        <div class="chart-panel panel-box">
+          <p class="chart-label mono">VECTOR MAP — 20 PARAMETERS</p>
+          <canvas id="radar-chart" width="300" height="300"></canvas>
+        </div>
+
+      </div>
+
+      <!-- ② 危険度 -->
+      <div class="threat-panel panel-box">
+        <p class="section-label mono">▶ THREAT LEVEL ASSESSMENT</p>
+        <div class="threat-display">
+          <span class="threat-prefix mono">THREAT LEVEL :</span>
+          <span id="threat-level" class="mono threat-value">—</span>
+        </div>
+        <div class="threat-track">
+          <div id="threat-bar"></div>
+          <div class="threat-scale mono">
+            <span>MINIMAL</span><span>LOW</span><span>MODERATE</span><span>HIGH</span><span>EXCESSIVE</span>
+          </div>
+        </div>
+        <p id="threat-message" class="threat-message"></p>
+      </div>
+
+      <!-- ③ 矛盾検出 -->
+      <div class="anomaly-panel panel-box">
+        <p class="section-label mono">▶ ANOMALY PATTERN DETECTION</p>
+        <div id="anomaly-container"></div>
+      </div>
+
+      <!-- ④ 上位パラメータ -->
+      <div class="param-ranking panel-box">
+        <p class="section-label mono">▶ DOMINANT VECTORS — TOP 7</p>
+        <div id="top-params"></div>
+      </div>
+
+    </div><!-- /#result-main -->
+
+    <!-- シェアパネル -->
+    <div class="share-panel">
+      <span class="share-panel-label mono">▶ SHARE ANALYSIS REPORT</span>
+      <div class="share-btn-row">
+        <button class="btn-share-img mono" onclick="downloadShareImage()">
+          &gt; SAVE IMAGE
+        </button>
+        <button class="btn-share-x mono" onclick="shareToX()">
+          &gt; SHARE ON X
+        </button>
+      </div>
+    </div>
+
+    <!-- 非表示Canvas（画像生成用） -->
+    <canvas id="share-canvas"></canvas>
+
+    <div class="result-footer">
+      <button class="btn-retry mono" onclick="retryDiagnosis()">
+        &gt; RE-ANALYZE SUBJECT
+      </button>
+    </div>
+
+  </section>
+
+
+  <!-- フッター -->
+  <footer class="site-footer">
+    <p class="mono">INST.#0047 // HUMAN VECTOR ANALYSIS SYSTEM // CONFIDENTIAL DATA</p>
+  </footer>
+
+</div><!-- /.page-wrapper -->
+
+<script src="types.js"></script>
+<script src="questions.js"></script>
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const el = document.getElementById("q-count");
+    if (el && typeof QUESTIONS !== "undefined") el.textContent = QUESTIONS.length;
+  });
+</script>
+<script src="app.js"></script>
+
+</body>
+</html>
